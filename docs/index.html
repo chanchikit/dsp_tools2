@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADM转换工具 - Bid Response ADM Converter</title>
+    <title>开发者工具集 - Developer Tools</title>
     <style>
         * {
             margin: 0;
@@ -15,26 +15,96 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .nav-menu {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .nav-item {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        .nav-item.active {
+            background: rgba(255,255,255,0.4);
+            font-weight: 600;
+        }
+        
+        .nav-item:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .nav-item:disabled:hover {
+            background: rgba(255,255,255,0.2);
+            transform: none;
         }
         
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .tool-content {
             background: white;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             overflow: hidden;
+            display: none;
         }
         
-        .header {
+        .tool-content.active {
+            display: block;
+        }
+        
+        .tool-header {
             background: #2c3e50;
             color: white;
             padding: 20px;
-            text-align: center;
         }
         
-        .content {
+        .tool-body {
             padding: 30px;
         }
         
@@ -69,6 +139,7 @@
             display: flex;
             gap: 10px;
             margin: 20px 0;
+            flex-wrap: wrap;
         }
         
         button {
@@ -131,25 +202,65 @@
             margin: 10px 0;
         }
         
+        .welcome {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+        
+        .welcome h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
         .footer {
             text-align: center;
-            padding: 20px;
-            color: #7f8c8d;
-            border-top: 1px solid #e0e0e0;
+            color: white;
+            opacity: 0.8;
+            padding: 40px 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>ADM转换工具</h1>
-            <p>将Bid Response中的ADM内容转换为可预览的HTML文件</p>
+    <div class="header">
+        <div class="header-content">
+            <h1>🛠️ 开发者工具集</h1>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" onclick="switchTool('', this)">🏠 首页</button>
+                <button class="nav-item" onclick="switchTool('adm-converter', this)">📱 ADM转换器</button>
+                <button class="nav-item" disabled>📋 JSON格式化</button>
+                <button class="nav-item" disabled>🔗 URL编解码</button>
+                <button class="nav-item" disabled>⏰ 时间戳转换</button>
+                <button class="nav-item" disabled>🔍 正则测试器</button>
+                <button class="nav-item" disabled>🎨 颜色工具</button>
+            </nav>
         </div>
-        
-        <div class="content">
-            <div class="input-section">
-                <label for="bidResponse">输入Bid Response JSON:</label>
-                <textarea id="bidResponse" placeholder='粘贴Bid Response JSON (支持转义格式):
+    </div>
+
+    <div class="container">
+        <!-- 欢迎页面 -->
+        <div id="welcome" class="tool-content active">
+            <div class="welcome">
+                <h2>欢迎使用开发者工具集</h2>
+                <p>请从顶部菜单栏选择需要使用的工具</p>
+                <p>✅ 已完成：ADM转换器</p>
+                <p>🚧 开发中：JSON格式化、URL编解码、时间戳转换等</p>
+            </div>
+        </div>
+
+        <!-- ADM转换器 -->
+        <div id="adm-converter" class="tool-content">
+            <div class="tool-header">
+                <h2>📱 ADM转换器</h2>
+                <p>将Bid Response中的ADM内容转换为可预览的HTML文件</p>
+            </div>
+            
+            <div class="tool-body">
+                <div class="input-section">
+                    <label for="bidResponse">输入Bid Response JSON:</label>
+                    <textarea id="bidResponse" placeholder='粘贴Bid Response JSON (支持转义格式):
 
 格式1 - 标准JSON:
 {
@@ -161,36 +272,64 @@
 {\"id\":\"46cb0e34-7388-41cc-99cb-d0af69fbe960\",\"seatbid\":[...]}
 
 如果是转义格式，请先点击"转义JSON"按钮'></textarea>
-                
-                <div class="button-group">
-                    <button class="btn-primary" onclick="convertAdm()">转换ADM</button>
-                    <button class="btn-secondary" onclick="unescapeJson()">转义JSON</button>
-                    <button class="btn-secondary" onclick="clearAll()">清空</button>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="convertAdm()">转换ADM</button>
+                        <button class="btn-secondary" onclick="unescapeJson()">转义JSON</button>
+                        <button class="btn-secondary" onclick="clearAll()">清空</button>
+                    </div>
+                    
+                    <div id="message"></div>
                 </div>
                 
-                <div id="message"></div>
-            </div>
-            
-            <div class="output-section">
-                <label>转换结果:</label>
-                <textarea id="htmlOutput" placeholder="转换后的HTML代码将显示在这里..." readonly></textarea>
-                
-                <div class="button-group">
-                    <button class="btn-success" onclick="downloadHtml()">下载HTML文件</button>
-                    <button class="btn-secondary" onclick="copyToClipboard()">复制代码</button>
+                <div class="output-section">
+                    <label>转换结果:</label>
+                    <textarea id="htmlOutput" placeholder="转换后的HTML代码将显示在这里..." readonly></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-success" onclick="downloadHtml()">下载HTML文件</button>
+                        <button class="btn-secondary" onclick="copyToClipboard()">复制代码</button>
+                    </div>
+                    
+                    <label>预览效果:</label>
+                    <iframe id="previewFrame" class="preview-frame" src="about:blank"></iframe>
                 </div>
-                
-                <label>预览效果:</label>
-                <iframe id="previewFrame" class="preview-frame" src="about:blank"></iframe>
             </div>
-        </div>
-        
-        <div class="footer">
-            <p>© 2024 ADM转换工具 | 用于RTB广告开发调试</p>
         </div>
     </div>
 
+    <div class="footer">
+        <p>© 2024 开发者工具集 | 持续更新中...</p>
+    </div>
+
     <script>
+        function switchTool(toolName, buttonElement) {
+            // 移除所有按钮的active状态
+            const allButtons = document.querySelectorAll('.nav-item');
+            allButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // 设置当前按钮为active
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+            }
+            
+            // 隐藏所有工具内容
+            const allTools = document.querySelectorAll('.tool-content');
+            allTools.forEach(tool => tool.classList.remove('active'));
+            
+            if (toolName) {
+                // 显示选中的工具
+                const selectedTool = document.getElementById(toolName);
+                if (selectedTool) {
+                    selectedTool.classList.add('active');
+                }
+            } else {
+                // 显示欢迎页面
+                document.getElementById('welcome').classList.add('active');
+            }
+        }
+
+        // ADM转换器相关函数
         function unescapeJson() {
             const input = document.getElementById('bidResponse').value.trim();
             
@@ -202,16 +341,13 @@
             try {
                 let jsonStr = input;
                 
-                // 如果输入是转义的JSON字符串（没有外层引号），先添加引号再解析
                 if (input.startsWith('{\\') || input.startsWith('[\\')) {
                     jsonStr = '"' + input + '"';
-                    // 解析为字符串，然后再解析为JSON
                     const unescapedStr = JSON.parse(jsonStr);
                     const parsed = JSON.parse(unescapedStr);
                     const formatted = JSON.stringify(parsed, null, 2);
                     document.getElementById('bidResponse').value = formatted;
                 } else {
-                    // 标准JSON格式
                     const parsed = JSON.parse(input);
                     const formatted = JSON.stringify(parsed, null, 2);
                     document.getElementById('bidResponse').value = formatted;
@@ -242,8 +378,6 @@
             
             try {
                 const bidResponse = JSON.parse(input);
-                
-                // 查找ADM内容
                 let admContent = null;
                 
                 if (bidResponse.seatbid && bidResponse.seatbid.length > 0) {
@@ -265,13 +399,9 @@
                     return;
                 }
                 
-                // 解码HTML实体
                 const decodedHtml = decodeHtmlEntities(admContent);
-                
-                // 显示结果
                 document.getElementById('htmlOutput').value = decodedHtml;
                 
-                // 预览
                 const previewFrame = document.getElementById('previewFrame');
                 const blob = new Blob([decodedHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);

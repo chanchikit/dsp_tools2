@@ -1,67 +1,47 @@
-# ADM转换工具
+# 开发者工具集
 
-一个简单易用的在线工具，用于将RTB Bid Response中的ADM内容转换为可预览的HTML文件。
+一个集合多种实用开发工具的在线平台，提升开发效率。
 
-## 功能特性
+## 🛠️ 工具列表
 
-- 🔄 **JSON解析**: 自动解析Bid Response JSON格式
-- 🎨 **实时预览**: 内置iframe预览转换后的广告效果
-- 📥 **文件下载**: 一键下载转换后的HTML文件
-- 📋 **复制功能**: 快速复制HTML代码到剪贴板
-- 🌐 **响应式设计**: 支持桌面和移动设备
-- ⚡ **纯前端**: 无需服务器，数据不会上传
+### ✅ 已完成
+- **ADM转换器**: 将RTB Bid Response中的ADM内容转换为可预览的HTML文件
 
-## 使用方法
+### 🚧 开发中
+- **JSON格式化**: 美化、压缩、验证JSON格式
+- **URL编解码**: URL编码解码、Base64编解码等
+- **时间戳转换**: Unix时间戳与日期时间相互转换
+- **正则测试器**: 在线测试正则表达式
+- **颜色工具**: 颜色格式转换和调色板
 
-1. 将完整的Bid Response JSON粘贴到输入框
-2. 点击"转换ADM"按钮
-3. 查看转换结果和预览效果
-4. 下载HTML文件或复制代码
+## 📁 项目结构
 
-## 支持的格式
-
-工具会自动查找JSON中的`seatbid[].bid[].adm`字段，并解码其中的HTML内容。
-
-### 示例输入格式
-
-```json
-{
-    "id": "46cb0e34-7388-41cc-99cb-d0af69fbe960",
-    "seatbid": [
-        {
-            "bid": [
-                {
-                    "adm": "<!DOCTYPE html>..."
-                }
-            ]
-        }
-    ]
-}
+```
+dev-tools/
+├── index.html          # 工具集首页
+├── tools/              # 各个工具目录
+│   └── adm-converter.html
+├── README.md
+└── _config.yml
 ```
 
-## 在线访问
+## 🚀 在线访问
 
-访问 GitHub Pages: [https://yourusername.github.io/adm-converter](https://yourusername.github.io/adm-converter)
+访问 GitHub Pages: [https://yourusername.github.io/dev-tools](https://yourusername.github.io/dev-tools)
 
-## 本地运行
+## 💻 本地运行
 
 1. 克隆仓库
 ```bash
-git clone https://github.com/yourusername/adm-converter.git
+git clone https://github.com/yourusername/dev-tools.git
 ```
 
 2. 直接在浏览器中打开 `index.html`
 
-## 技术栈
+## 🤝 贡献
 
-- 纯HTML/CSS/JavaScript
-- 无外部依赖
-- 响应式设计
+欢迎提交Issue和Pull Request来添加新工具或改进现有功能。
 
-## 贡献
-
-欢迎提交Issue和Pull Request来改进这个工具。
-
-## 许可证
+## 📄 许可证
 
 MIT License
