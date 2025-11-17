@@ -230,9 +230,9 @@
             <nav class="nav-menu">
                 <button class="nav-item active" onclick="switchTool('', this)">🏠 首页</button>
                 <button class="nav-item" onclick="switchTool('adm-converter', this)">📱 ADM转换器</button>
+                <button class="nav-item" onclick="switchTool('timestamp', this)">⏰ 时间戳转换</button>
                 <button class="nav-item" disabled>📋 JSON格式化</button>
                 <button class="nav-item" disabled>🔗 URL编解码</button>
-                <button class="nav-item" disabled>⏰ 时间戳转换</button>
                 <button class="nav-item" disabled>🔍 正则测试器</button>
                 <button class="nav-item" disabled>🎨 颜色工具</button>
             </nav>
@@ -245,8 +245,8 @@
             <div class="welcome">
                 <h2>欢迎使用开发者工具集</h2>
                 <p>请从顶部菜单栏选择需要使用的工具</p>
-                <p>✅ 已完成：ADM转换器</p>
-                <p>🚧 开发中：JSON格式化、URL编解码、时间戳转换等</p>
+                <p>✅ 已完成：ADM转换器、时间戳转换</p>
+                <p>🚧 开发中：JSON格式化、URL编解码、正则测试器等</p>
             </div>
         </div>
 
@@ -294,6 +294,46 @@
                     <label>预览效果:</label>
                     <iframe id="previewFrame" class="preview-frame" src="about:blank"></iframe>
                 </div>
+            </div>
+        </div>
+
+        <!-- 时间戳转换器 -->
+        <div id="timestamp" class="tool-content">
+            <div class="tool-header">
+                <h2>⏰ 时间戳转换器</h2>
+                <p>Unix时间戳与日期时间相互转换 (UTC+8时区)</p>
+            </div>
+            
+            <div class="tool-body">
+                <div class="input-section">
+                    <label for="timestampInput">时间戳转日期时间:</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="timestampInput" placeholder="输入Unix时间戳 (秒)" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        <button class="btn-primary" onclick="timestampToDate()">转换为日期</button>
+                        <button class="btn-secondary" onclick="setCurrentTimestamp()">当前时间</button>
+                    </div>
+                    <div id="timestampResult" style="padding: 10px; background: #f8f9fa; border-radius: 6px; font-family: monospace;"></div>
+                </div>
+                
+                <div class="input-section">
+                    <label>日期时间转时间戳:</label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                        <input type="number" id="year" placeholder="年" min="1970" max="2100" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        <input type="number" id="month" placeholder="月" min="1" max="12" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        <input type="number" id="day" placeholder="日" min="1" max="31" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        <input type="number" id="hour" placeholder="时" min="0" max="23" value="0" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        <input type="number" id="minute" placeholder="分" min="0" max="59" value="0" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        <input type="number" id="second" placeholder="秒" min="0" max="59" value="0" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="dateToTimestamp()">转换为时间戳</button>
+                        <button class="btn-secondary" onclick="setCurrentDate()">当前时间</button>
+                        <button class="btn-secondary" onclick="clearDateTime()">清空</button>
+                    </div>
+                    <div id="dateResult" style="padding: 10px; background: #f8f9fa; border-radius: 6px; font-family: monospace;"></div>
+                </div>
+                
+                <div id="timestampMessage"></div>
             </div>
         </div>
     </div>
@@ -462,6 +502,123 @@
             document.getElementById('previewFrame').src = 'about:blank';
             document.getElementById('message').innerHTML = '';
         }
+        
+        // 时间戳转换器相关函数
+        function showTimestampMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('timestampMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function timestampToDate() {
+            const timestamp = document.getElementById('timestampInput').value.trim();
+            
+            if (!timestamp) {
+                showTimestampMessage('请输入时间戳');
+                return;
+            }
+            
+            try {
+                // 支持秒和毫秒时间戳
+                let ts = parseInt(timestamp);
+                if (timestamp.length === 10) {
+                    ts = ts * 1000; // 秒转毫秒
+                }
+                
+                // 创建UTC+8时间
+                const date = new Date(ts);
+                const utc8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+                
+                const result = `
+                    <strong>UTC+8时间:</strong><br>
+                    ${utc8Date.getFullYear()}年${(utc8Date.getMonth()+1).toString().padStart(2,'0')}月${utc8Date.getDate().toString().padStart(2,'0')}日 ${utc8Date.getHours().toString().padStart(2,'0')}:${utc8Date.getMinutes().toString().padStart(2,'0')}:${utc8Date.getSeconds().toString().padStart(2,'0')}<br>
+                    <strong>格式化:</strong> ${utc8Date.getFullYear()}-${(utc8Date.getMonth()+1).toString().padStart(2,'0')}-${utc8Date.getDate().toString().padStart(2,'0')} ${utc8Date.getHours().toString().padStart(2,'0')}:${utc8Date.getMinutes().toString().padStart(2,'0')}:${utc8Date.getSeconds().toString().padStart(2,'0')}<br>
+                    <strong>星期:</strong> ${['日','一','二','三','四','五','六'][utc8Date.getDay()]}
+                `;
+                
+                document.getElementById('timestampResult').innerHTML = result;
+                showTimestampMessage('转换成功！', 'success');
+                
+            } catch (error) {
+                showTimestampMessage('时间戳格式错误');
+            }
+        }
+
+        function dateToTimestamp() {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            const day = document.getElementById('day').value;
+            const hour = document.getElementById('hour').value || 0;
+            const minute = document.getElementById('minute').value || 0;
+            const second = document.getElementById('second').value || 0;
+            
+            if (!year || !month || !day) {
+                showTimestampMessage('请至少输入年月日');
+                return;
+            }
+            
+            try {
+                // 创建UTC+8时间，需要减去8小时偏移
+                const date = new Date(year, month - 1, day, hour, minute, second);
+                const utc8Timestamp = date.getTime() - (8 * 60 * 60 * 1000);
+                const timestampSeconds = Math.floor(utc8Timestamp / 1000);
+                
+                const result = `
+                    <strong>时间戳 (秒):</strong> ${timestampSeconds}<br>
+                    <strong>时间戳 (毫秒):</strong> ${utc8Timestamp}<br>
+                    <strong>输入时间:</strong> ${year}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')} ${hour.toString().padStart(2,'0')}:${minute.toString().padStart(2,'0')}:${second.toString().padStart(2,'0')} (UTC+8)
+                `;
+                
+                document.getElementById('dateResult').innerHTML = result;
+                showTimestampMessage('转换成功！', 'success');
+                
+            } catch (error) {
+                showTimestampMessage('日期格式错误');
+            }
+        }
+
+        function setCurrentTimestamp() {
+            const now = Math.floor(Date.now() / 1000);
+            document.getElementById('timestampInput').value = now;
+            timestampToDate();
+        }
+
+        function setCurrentDate() {
+            const now = new Date();
+            // 转换为UTC+8
+            const utc8Date = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+            
+            document.getElementById('year').value = utc8Date.getFullYear();
+            document.getElementById('month').value = utc8Date.getMonth() + 1;
+            document.getElementById('day').value = utc8Date.getDate();
+            document.getElementById('hour').value = utc8Date.getHours();
+            document.getElementById('minute').value = utc8Date.getMinutes();
+            document.getElementById('second').value = utc8Date.getSeconds();
+            
+            dateToTimestamp();
+        }
+
+        function clearDateTime() {
+            document.getElementById('year').value = '';
+            document.getElementById('month').value = '';
+            document.getElementById('day').value = '';
+            document.getElementById('hour').value = '0';
+            document.getElementById('minute').value = '0';
+            document.getElementById('second').value = '0';
+            document.getElementById('dateResult').innerHTML = '';
+        }
+
+        // 页面加载时设置默认日期为今天
+        window.addEventListener('load', function() {
+            const now = new Date();
+            const utc8Date = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+            
+            document.getElementById('year').value = utc8Date.getFullYear();
+            document.getElementById('month').value = utc8Date.getMonth() + 1;
+            document.getElementById('day').value = utc8Date.getDate();
+        });
     </script>
 </body>
 </html>
