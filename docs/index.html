@@ -231,8 +231,9 @@
                 <button class="nav-item active" onclick="switchTool('', this)">🏠 首页</button>
                 <button class="nav-item" onclick="switchTool('adm-converter', this)">📱 ADM转换器</button>
                 <button class="nav-item" onclick="switchTool('timestamp', this)">⏰ 时间戳转换</button>
+                <button class="nav-item" onclick="switchTool('url-encoder', this)">🔗 URL编解码</button>
+                <button class="nav-item" onclick="switchTool('bid-parser', this)">🎯 Bid识别</button>
                 <button class="nav-item" disabled>📋 JSON格式化</button>
-                <button class="nav-item" disabled>🔗 URL编解码</button>
                 <button class="nav-item" disabled>🔍 正则测试器</button>
                 <button class="nav-item" disabled>🎨 颜色工具</button>
             </nav>
@@ -245,8 +246,8 @@
             <div class="welcome">
                 <h2>欢迎使用开发者工具集</h2>
                 <p>请从顶部菜单栏选择需要使用的工具</p>
-                <p>✅ 已完成：ADM转换器、时间戳转换</p>
-                <p>🚧 开发中：JSON格式化、URL编解码、正则测试器等</p>
+                <p>✅ 已完成：ADM转换器、时间戳转换、URL编解码、Bid识别</p>
+                <p>🚧 开发中：JSON格式化、正则测试器、颜色工具等</p>
             </div>
         </div>
 
@@ -334,6 +335,91 @@
                 </div>
                 
                 <div id="timestampMessage"></div>
+            </div>
+        </div>
+
+        <!-- URL编解码工具 -->
+        <div id="url-encoder" class="tool-content">
+            <div class="tool-header">
+                <h2>🔗 URL编解码工具</h2>
+                <p>URL编码解码、Base64编解码等常用编码转换</p>
+            </div>
+            
+            <div class="tool-body">
+                <div class="input-section">
+                    <label for="urlInput">URL编解码:</label>
+                    <textarea id="urlInput" placeholder="输入需要编码或解码的URL内容...
+例如：
+编码前：https://example.com/search?q=测试 参数&type=1
+编码后：https://example.com/search?q=%E6%B5%8B%E8%AF%95%20%E5%8F%82%E6%95%B0&type=1"></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="encodeUrl()">URL编码</button>
+                        <button class="btn-primary" onclick="decodeUrl()">URL解码</button>
+                        <button class="btn-secondary" onclick="clearUrl()">清空</button>
+                    </div>
+                    
+                    <label>结果:</label>
+                    <textarea id="urlOutput" readonly placeholder="编码/解码结果将显示在这里..."></textarea>
+                </div>
+                
+                <div class="input-section">
+                    <label for="base64Input">Base64编解码:</label>
+                    <textarea id="base64Input" placeholder="输入需要编码或解码的Base64内容...
+例如：
+编码前：Hello World 你好世界
+编码后：SGVsbG8gV29ybGQg5L2g5aW95LiW55WM"></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="encodeBase64()">Base64编码</button>
+                        <button class="btn-primary" onclick="decodeBase64()">Base64解码</button>
+                        <button class="btn-secondary" onclick="clearBase64()">清空</button>
+                    </div>
+                    
+                    <label>结果:</label>
+                    <textarea id="base64Output" readonly placeholder="编码/解码结果将显示在这里..."></textarea>
+                </div>
+                
+                <div id="urlMessage"></div>
+            </div>
+        </div>
+
+        <!-- Bid识别工具 -->
+        <div id="bid-parser" class="tool-content">
+            <div class="tool-header">
+                <h2>🎯 Bid识别工具</h2>
+                <p>解析Bid Request/Response，转义JSON并格式化显示</p>
+            </div>
+            
+            <div class="tool-body">
+                <div class="input-section">
+                    <label for="bidInput">输入Bid Request/Response:</label>
+                    <textarea id="bidInput" placeholder='粘贴转义的Bid Request或Response JSON:
+
+例如：
+{"id":"eb566b92-519d-47cf-a6f6-fbee7b2f0e6d","bidid":"691bdd0f7d641500018d136e",...}
+
+支持转义格式，工具会自动识别并解析'></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="parseBid()">解析Bid</button>
+                        <button class="btn-secondary" onclick="clearBid()">清空</button>
+                    </div>
+                    
+                    <div id="bidMessage"></div>
+                </div>
+                
+                <div class="output-section">
+                    <label>解析结果:</label>
+                    <div id="bidAnalysis" style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;"></div>
+                    
+                    <label>格式化JSON:</label>
+                    <textarea id="bidOutput" readonly placeholder="格式化后的JSON将显示在这里..."></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-success" onclick="copyBidJson()">复制JSON</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -619,6 +705,391 @@
             document.getElementById('month').value = utc8Date.getMonth() + 1;
             document.getElementById('day').value = utc8Date.getDate();
         });
+
+        // URL编解码工具相关函数
+        function showUrlMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('urlMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function encodeUrl() {
+            const input = document.getElementById('urlInput').value;
+            
+            if (!input.trim()) {
+                showUrlMessage('请输入需要编码的内容');
+                return;
+            }
+            
+            try {
+                const encoded = encodeURIComponent(input);
+                document.getElementById('urlOutput').value = encoded;
+                showUrlMessage('URL编码成功！', 'success');
+            } catch (error) {
+                showUrlMessage('编码失败: ' + error.message);
+            }
+        }
+
+        function decodeUrl() {
+            const input = document.getElementById('urlInput').value;
+            
+            if (!input.trim()) {
+                showUrlMessage('请输入需要解码的内容');
+                return;
+            }
+            
+            try {
+                const decoded = decodeURIComponent(input);
+                document.getElementById('urlOutput').value = decoded;
+                showUrlMessage('URL解码成功！', 'success');
+            } catch (error) {
+                showUrlMessage('解码失败，请检查输入格式');
+            }
+        }
+
+        function clearUrl() {
+            document.getElementById('urlInput').value = '';
+            document.getElementById('urlOutput').value = '';
+        }
+
+        function encodeBase64() {
+            const input = document.getElementById('base64Input').value;
+            
+            if (!input.trim()) {
+                showUrlMessage('请输入需要编码的内容');
+                return;
+            }
+            
+            try {
+                const encoded = btoa(unescape(encodeURIComponent(input)));
+                document.getElementById('base64Output').value = encoded;
+                showUrlMessage('Base64编码成功！', 'success');
+            } catch (error) {
+                showUrlMessage('编码失败: ' + error.message);
+            }
+        }
+
+        function decodeBase64() {
+            const input = document.getElementById('base64Input').value;
+            
+            if (!input.trim()) {
+                showUrlMessage('请输入需要解码的内容');
+                return;
+            }
+            
+            try {
+                const decoded = decodeURIComponent(escape(atob(input)));
+                document.getElementById('base64Output').value = decoded;
+                showUrlMessage('Base64解码成功！', 'success');
+            } catch (error) {
+                showUrlMessage('解码失败，请检查Base64格式');
+            }
+        }
+
+        function clearBase64() {
+            document.getElementById('base64Input').value = '';
+            document.getElementById('base64Output').value = '';
+        }
+
+        // Bid识别工具相关函数
+        function showBidMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('bidMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function parseBid() {
+            const input = document.getElementById('bidInput').value.trim();
+            
+            if (!input) {
+                showBidMessage('请输入Bid Request或Response内容');
+                return;
+            }
+            
+            try {
+                let jsonStr = input;
+                
+                // 处理转义JSON
+                if (input.startsWith('{\\') || input.startsWith('[\\')) {
+                    jsonStr = '"' + input + '"';
+                    const unescapedStr = JSON.parse(jsonStr);
+                    jsonStr = JSON.parse(unescapedStr);
+                } else {
+                    jsonStr = JSON.parse(input);
+                }
+                
+                // 格式化JSON
+                const formatted = JSON.stringify(jsonStr, null, 2);
+                document.getElementById('bidOutput').value = formatted;
+                
+                // 分析Bid结构
+                analyzeBid(jsonStr);
+                
+                showBidMessage('Bid解析成功！', 'success');
+                
+            } catch (error) {
+                showBidMessage('解析失败，请检查JSON格式: ' + error.message);
+            }
+        }
+
+        function analyzeBid(bidData) {
+            const analysisDiv = document.getElementById('bidAnalysis');
+            let html = '';
+            
+            // 判断是Request还是Response
+            const isResponse = bidData.seatbid || bidData.bidid;
+            const isRequest = bidData.imp || bidData.site || bidData.app;
+            
+            html += `<h3 style="color: #2c3e50; margin-bottom: 15px;">📊 Bid ${isResponse ? 'Response' : isRequest ? 'Request' : '数据'} 分析</h3>`;
+            
+            // 基本信息
+            html += '<div style="margin-bottom: 20px;">';
+            html += '<h4 style="color: #34495e; margin-bottom: 10px;">🔍 基本信息</h4>';
+            html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">';
+            
+            if (bidData.id) html += `<div><strong>ID:</strong> ${bidData.id}</div>`;
+            if (bidData.bidid) html += `<div><strong>Bid ID:</strong> ${bidData.bidid}</div>`;
+            if (bidData.cur) html += `<div><strong>货币:</strong> ${bidData.cur}</div>`;
+            if (bidData.tmax) html += `<div><strong>超时:</strong> ${bidData.tmax}ms</div>`;
+            
+            html += '</div></div>';
+            
+            // Response特有信息
+            if (isResponse && bidData.seatbid) {
+                html += '<div style="margin-bottom: 20px;">';
+                html += '<h4 style="color: #34495e; margin-bottom: 10px;">💰 竞价信息</h4>';
+                
+                bidData.seatbid.forEach((seat, index) => {
+                    html += `<div style="border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px;">`;
+                    html += `<h5 style="color: #2980b9;">Seat: ${seat.seat || 'N/A'}</h5>`;
+                    
+                    if (seat.bid) {
+                        seat.bid.forEach((bid, bidIndex) => {
+                            html += `<div style="margin-left: 20px; margin-top: 10px;">`;
+                            html += `<strong>Bid ${bidIndex + 1}:</strong><br>`;
+                            html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 5px;">`;
+                            
+                            if (bid.price) html += `<div><strong>价格:</strong> $${bid.price.toFixed(4)}</div>`;
+                            if (bid.impid) html += `<div><strong>Imp ID:</strong> ${bid.impid}</div>`;
+                            if (bid.crid) html += `<div><strong>创意ID:</strong> ${bid.crid}</div>`;
+                            if (bid.w && bid.h) html += `<div><strong>尺寸:</strong> ${bid.w}x${bid.h}</div>`;
+                            if (bid.adomain) html += `<div><strong>广告域:</strong> ${bid.adomain.join(', ')}</div>`;
+                            if (bid.bundle) html += `<div><strong>Bundle:</strong> ${bid.bundle}</div>`;
+                            
+                            html += `</div>`;
+                            
+                            // ADM预览
+                            if (bid.adm) {
+                                html += `<div style="margin-top: 10px;">`;
+                                html += `<strong>ADM:</strong> <span style="color: #27ae60;">包含广告内容</span>`;
+                                html += `</div>`;
+                            }
+                            
+                            html += `</div>`;
+                        });
+                    }
+                    html += `</div>`;
+                });
+                html += '</div>';
+            }
+            
+            // Request特有信息
+            if (isRequest) {
+                if (bidData.imp) {
+                    html += '<div style="margin-bottom: 20px;">';
+                    html += '<h4 style="color: #34495e; margin-bottom: 10px;">📱 广告位信息</h4>';
+                    
+                    bidData.imp.forEach((imp, index) => {
+                        html += `<div style="border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px;">`;
+                        html += `<h5 style="color: #2980b9;">Impression ${index + 1}</h5>`;
+                        html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;">`;
+                        
+                        if (imp.id) html += `<div><strong>ID:</strong> ${imp.id}</div>`;
+                        if (imp.bidfloor) html += `<div><strong>底价:</strong> $${imp.bidfloor}</div>`;
+                        if (imp.banner) {
+                            const banner = imp.banner;
+                            if (banner.w && banner.h) html += `<div><strong>Banner:</strong> ${banner.w}x${banner.h}</div>`;
+                        }
+                        if (imp.video) html += `<div><strong>类型:</strong> Video</div>`;
+                        if (imp.native) html += `<div><strong>类型:</strong> Native</div>`;
+                        
+                        html += `</div>`;
+                        
+                        // 拦截规则
+                        if (imp.badv || imp.bcat || imp.battr) {
+                            html += `<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 4px;">`;
+                            html += `<h6 style="color: #856404; margin-bottom: 8px;">🚫 拦截规则</h6>`;
+                            
+                            if (imp.badv && imp.badv.length > 0) {
+                                html += `<div style="margin-bottom: 8px;"><strong>拦截广告主域名:</strong><br>`;
+                                html += `<span style="font-family: monospace; color: #dc3545;">${imp.badv.join(', ')}</span></div>`;
+                            }
+                            
+                            if (imp.bcat && imp.bcat.length > 0) {
+                                html += `<div style="margin-bottom: 8px;"><strong>拦截广告类别:</strong><br>`;
+                                imp.bcat.forEach(cat => {
+                                    const catName = getCategoryName(cat);
+                                    html += `<span style="display: inline-block; margin: 2px 5px 2px 0; padding: 2px 8px; background: #dc3545; color: white; border-radius: 12px; font-size: 12px;">${cat} - ${catName}</span>`;
+                                });
+                                html += `</div>`;
+                            }
+                            
+                            if (imp.battr && imp.battr.length > 0) {
+                                html += `<div><strong>拦截广告属性:</strong><br>`;
+                                imp.battr.forEach(attr => {
+                                    const attrName = getAttributeName(attr);
+                                    html += `<span style="display: inline-block; margin: 2px 5px 2px 0; padding: 2px 8px; background: #fd7e14; color: white; border-radius: 12px; font-size: 12px;">${attr} - ${attrName}</span>`;
+                                });
+                                html += `</div>`;
+                            }
+                            
+                            html += `</div>`;
+                        }
+                        
+                        html += `</div>`;
+                    });
+                    html += '</div>';
+                }
+                
+                // 全局拦截规则
+                if (bidData.badv || bidData.bcat || bidData.battr) {
+                    html += '<div style="margin-bottom: 20px;">';
+                    html += '<h4 style="color: #34495e; margin-bottom: 10px;">🚫 全局拦截规则</h4>';
+                    html += `<div style="padding: 15px; background: #f8d7da; border-radius: 6px;">`;
+                    
+                    if (bidData.badv && bidData.badv.length > 0) {
+                        html += `<div style="margin-bottom: 15px;"><strong>拦截广告主域名:</strong><br>`;
+                        html += `<div style="font-family: monospace; color: #721c24; margin-top: 5px;">${bidData.badv.join(', ')}</div></div>`;
+                    }
+                    
+                    if (bidData.bcat && bidData.bcat.length > 0) {
+                        html += `<div style="margin-bottom: 15px;"><strong>拦截广告类别:</strong><br>`;
+                        html += `<div style="margin-top: 8px;">`;
+                        bidData.bcat.forEach(cat => {
+                            const catName = getCategoryName(cat);
+                            html += `<span style="display: inline-block; margin: 3px 8px 3px 0; padding: 4px 12px; background: #dc3545; color: white; border-radius: 15px; font-size: 13px;">${cat} - ${catName}</span>`;
+                        });
+                        html += `</div></div>`;
+                    }
+                    
+                    if (bidData.battr && bidData.battr.length > 0) {
+                        html += `<div><strong>拦截广告属性:</strong><br>`;
+                        html += `<div style="margin-top: 8px;">`;
+                        bidData.battr.forEach(attr => {
+                            const attrName = getAttributeName(attr);
+                            html += `<span style="display: inline-block; margin: 3px 8px 3px 0; padding: 4px 12px; background: #fd7e14; color: white; border-radius: 15px; font-size: 13px;">${attr} - ${attrName}</span>`;
+                        });
+                        html += `</div></div>`;
+                    }
+                    
+                    html += `</div></div>`;
+                }
+                
+                // 设备信息
+                if (bidData.device) {
+                    html += '<div style="margin-bottom: 20px;">';
+                    html += '<h4 style="color: #34495e; margin-bottom: 10px;">📱 设备信息</h4>';
+                    html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;">`;
+                    
+                    const device = bidData.device;
+                    if (device.ua) html += `<div><strong>User Agent:</strong> ${device.ua.substring(0, 50)}...</div>`;
+                    if (device.ip) html += `<div><strong>IP:</strong> ${device.ip}</div>`;
+                    if (device.make) html += `<div><strong>设备厂商:</strong> ${device.make}</div>`;
+                    if (device.model) html += `<div><strong>设备型号:</strong> ${device.model}</div>`;
+                    if (device.os) html += `<div><strong>操作系统:</strong> ${device.os}</div>`;
+                    if (device.osv) html += `<div><strong>系统版本:</strong> ${device.osv}</div>`;
+                    
+                    html += `</div></div>`;
+                }
+            }
+            
+            analysisDiv.innerHTML = html;
+        }
+
+        // IAB广告类别解析
+        function getCategoryName(category) {
+            const categories = {
+                'IAB1': '艺术与娱乐',
+                'IAB2': '汽车',
+                'IAB3': '商业',
+                'IAB4': '职业',
+                'IAB5': '教育',
+                'IAB6': '家庭与育儿',
+                'IAB7': '健康与健身',
+                'IAB8': '食品与饮料',
+                'IAB9': '爱好与兴趣',
+                'IAB10': '家居与花园',
+                'IAB11': '法律、政府与政治',
+                'IAB12': '新闻',
+                'IAB13': '个人理财',
+                'IAB14': '社会',
+                'IAB15': '科学',
+                'IAB16': '宠物',
+                'IAB17': '体育',
+                'IAB18': '风格与时尚',
+                'IAB19': '技术与计算',
+                'IAB20': '旅游',
+                'IAB21': '房地产',
+                'IAB22': '购物',
+                'IAB23': '宗教与灵性',
+                'IAB24': '未分类',
+                'IAB25': '非标准内容',
+                'IAB26': '违法内容'
+            };
+            
+            // 处理子类别
+            const mainCat = category.split('-')[0];
+            return categories[mainCat] || categories[category] || '未知类别';
+        }
+
+        // 广告属性解析
+        function getAttributeName(attr) {
+            const attributes = {
+                1: '音频广告(自动播放)',
+                2: '音频广告(用户启动)',
+                3: '可展开广告(自动)',
+                4: '可展开广告(用户点击)',
+                5: '可展开广告(用户滚动)',
+                6: '游戏内广告',
+                7: '弹窗广告',
+                8: '挑衅性或暗示性图像',
+                9: '闪烁文字',
+                10: '调查',
+                11: '文本输入',
+                12: '用户交互警告',
+                13: '窗口对话框或警告样式',
+                14: '有音频按钮/控件',
+                15: '跳过按钮(视频广告)',
+                16: 'Adobe Flash'
+            };
+            
+            return attributes[attr] || `属性${attr}`;
+        }
+
+        function clearBid() {
+            document.getElementById('bidInput').value = '';
+            document.getElementById('bidOutput').value = '';
+            document.getElementById('bidAnalysis').innerHTML = '';
+        }
+
+        function copyBidJson() {
+            const jsonContent = document.getElementById('bidOutput').value;
+            
+            if (!jsonContent) {
+                showBidMessage('请先解析Bid内容');
+                return;
+            }
+            
+            navigator.clipboard.writeText(jsonContent).then(() => {
+                showBidMessage('JSON已复制到剪贴板！', 'success');
+            }).catch(() => {
+                showBidMessage('复制失败，请手动选择复制');
+            });
+        }
     </script>
 </body>
 </html>
