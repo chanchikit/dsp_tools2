@@ -233,6 +233,7 @@
                 <button class="nav-item" onclick="switchTool('timestamp', this)">⏰ 时间戳转换</button>
                 <button class="nav-item" onclick="switchTool('url-encoder', this)">🔗 URL编解码</button>
                 <button class="nav-item" onclick="switchTool('bid-parser', this)">🎯 Bid识别</button>
+                <button class="nav-item" onclick="switchTool('budget-generator', this)">💰 预算生成</button>
                 <button class="nav-item" disabled>📋 JSON格式化</button>
                 <button class="nav-item" disabled>🔍 正则测试器</button>
                 <button class="nav-item" disabled>🎨 颜色工具</button>
@@ -246,7 +247,7 @@
             <div class="welcome">
                 <h2>欢迎使用开发者工具集</h2>
                 <p>请从顶部菜单栏选择需要使用的工具</p>
-                <p>✅ 已完成：ADM转换器、时间戳转换、URL编解码、Bid识别</p>
+                <p>✅ 已完成：ADM转换器、时间戳转换、URL编解码、Bid识别、预算生成</p>
                 <p>🚧 开发中：JSON格式化、正则测试器、颜色工具等</p>
             </div>
         </div>
@@ -418,6 +419,51 @@
                     
                     <div class="button-group">
                         <button class="btn-success" onclick="copyBidJson()">复制JSON</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 细粒度预算生成工具 -->
+        <div id="budget-generator" class="tool-content">
+            <div class="tool-header">
+                <h2>💰 细粒度预算生成工具</h2>
+                <p>生成细粒度预算配置，支持多维度组合</p>
+            </div>
+            
+            <div class="tool-body">
+                <div class="input-section">
+                    <label for="combinationsInput">维度组合 (每行一个组合，用Tab或空格分隔):</label>
+                    <textarea id="combinationsInput" placeholder='输入维度组合，每行一个，例如：
+topon	chartboost.com	com.naver.linewebtoon	banner
+topon	mintegral.com	com.shopee.ph	native
+unity	applovin.com	com.tiktok	video
+
+支持的分隔符：Tab键、多个空格'></textarea>
+                    
+                    <label for="capInput">预算上限 (Cap):</label>
+                    <input type="number" id="capInput" placeholder="输入预算数值，例如：100" min="0" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="generateBudget()">生成预算配置</button>
+                        <button class="btn-secondary" onclick="clearBudget()">清空</button>
+                    </div>
+                    
+                    <div id="budgetMessage"></div>
+                </div>
+                
+                <div class="output-section">
+                    <label>生成结果:</label>
+                    <textarea id="budgetOutput" readonly placeholder="生成的预算配置将显示在这里..."></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-success" onclick="copyBudgetResult()">复制结果</button>
+                        <button class="btn-secondary" onclick="downloadBudgetFile()">下载文件</button>
+                    </div>
+                    
+                    <div id="budgetPreview" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📊 预览统计</h4>
+                        <div id="budgetStats"></div>
                     </div>
                 </div>
             </div>
@@ -1089,6 +1135,150 @@
             }).catch(() => {
                 showBidMessage('复制失败，请手动选择复制');
             });
+        }
+
+        // 细粒度预算生成工具相关函数
+        function showBudgetMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('budgetMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function generateBudget() {
+            const combinationsText = document.getElementById('combinationsInput').value.trim();
+            const cap = document.getElementById('capInput').value.trim();
+            
+            if (!combinationsText) {
+                showBudgetMessage('请输入维度组合');
+                return;
+            }
+            
+            if (!cap || isNaN(cap) || parseFloat(cap) < 0) {
+                showBudgetMessage('请输入有效的预算数值');
+                return;
+            }
+            
+            try {
+                const lines = combinationsText.split('\n').filter(line => line.trim());
+                const results = [];
+                const stats = {
+                    total: 0,
+                    valid: 0,
+                    invalid: 0,
+                    totalBudget: 0
+                };
+                
+                lines.forEach((line, index) => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    stats.total++;
+                    
+                    // 支持多种分隔符：Tab、多个空格
+                    const parts = trimmedLine.split(/\t+|\s{2,}/).filter(part => part.trim());
+                    
+                    if (parts.length === 0) {
+                        stats.invalid++;
+                        return;
+                    }
+                    
+                    // 生成配置：用#连接各部分，然后加上:cap
+                    const config = parts.join('#') + ':' + cap;
+                    results.push(config);
+                    stats.valid++;
+                    stats.totalBudget += parseFloat(cap);
+                });
+                
+                if (results.length === 0) {
+                    showBudgetMessage('没有有效的维度组合');
+                    return;
+                }
+                
+                // 显示结果
+                document.getElementById('budgetOutput').value = results.join('\n');
+                
+                // 显示统计信息
+                showBudgetStats(stats);
+                
+                showBudgetMessage(`成功生成 ${results.length} 条预算配置！`, 'success');
+                
+            } catch (error) {
+                showBudgetMessage('生成失败: ' + error.message);
+            }
+        }
+
+        function showBudgetStats(stats) {
+            const previewDiv = document.getElementById('budgetPreview');
+            const statsDiv = document.getElementById('budgetStats');
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #2980b9;">${stats.total}</div>
+                        <div style="color: #7f8c8d;">总行数</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #27ae60;">${stats.valid}</div>
+                        <div style="color: #7f8c8d;">有效配置</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #e74c3c;">${stats.invalid}</div>
+                        <div style="color: #7f8c8d;">无效行</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #f39c12;">${stats.totalBudget.toFixed(2)}</div>
+                        <div style="color: #7f8c8d;">总预算</div>
+                    </div>
+                </div>
+            `;
+            
+            statsDiv.innerHTML = html;
+            previewDiv.style.display = 'block';
+        }
+
+        function clearBudget() {
+            document.getElementById('combinationsInput').value = '';
+            document.getElementById('capInput').value = '';
+            document.getElementById('budgetOutput').value = '';
+            document.getElementById('budgetPreview').style.display = 'none';
+        }
+
+        function copyBudgetResult() {
+            const result = document.getElementById('budgetOutput').value;
+            
+            if (!result) {
+                showBudgetMessage('请先生成预算配置');
+                return;
+            }
+            
+            navigator.clipboard.writeText(result).then(() => {
+                showBudgetMessage('预算配置已复制到剪贴板！', 'success');
+            }).catch(() => {
+                showBudgetMessage('复制失败，请手动选择复制');
+            });
+        }
+
+        function downloadBudgetFile() {
+            const result = document.getElementById('budgetOutput').value;
+            
+            if (!result) {
+                showBudgetMessage('请先生成预算配置');
+                return;
+            }
+            
+            const blob = new Blob([result], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `budget_config_${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showBudgetMessage('预算配置文件下载成功！', 'success');
         }
     </script>
 </body>
