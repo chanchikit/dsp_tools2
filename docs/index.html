@@ -463,6 +463,50 @@ topon	chartboost.com	com.tiktok'></textarea>
                         <div id="budgetStats"></div>
                     </div>
                 </div>
+                
+                <!-- 预算调整模块 -->
+                <div class="input-section" style="border-top: 2px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 20px;">🔧 预算调整</h3>
+                    
+                    <label for="currentBudgetInput">当前预算配置:</label>
+                    <textarea id="currentBudgetInput" placeholder='输入当前的预算配置，每行一个，格式：
+adx#first_ssp#bundle#placement:预算值
+adx#first_ssp#bundle#:预算值
+
+例如：
+flatads#chartboost.com#com.vitastudio.mahjong#0d9d8f05-c123-42d9-a1b3-f83a6354217b:100
+flatads#chartboost.com#com.vitastudio.mahjong#:50
+topon#mintegral.com#com.shopee.ph#banner:200'></textarea>
+                    
+                    <label for="updateRulesInput">更新规则 (可以从excel直接复制):</label>
+                    <textarea id="updateRulesInput" placeholder='输入需要更新的组合和预算，每行一个，格式：
+adx	first_ssp	bundle	placement	新预算值
+adx	first_ssp	bundle	新预算值
+
+例如：
+flatads	chartboost.com	com.vitastudio.mahjong	0d9d8f05-c123-42d9-a1b3-f83a6354217b	200
+flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="adjustBudget()">调整预算</button>
+                        <button class="btn-secondary" onclick="clearAdjustment()">清空调整</button>
+                    </div>
+                    
+                    <div id="adjustmentMessage"></div>
+                    
+                    <label>调整结果:</label>
+                    <textarea id="adjustmentOutput" readonly placeholder="调整后的预算配置将显示在这里..."></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-success" onclick="copyAdjustmentResult()">复制结果</button>
+                        <button class="btn-secondary" onclick="downloadAdjustmentFile()">下载文件</button>
+                    </div>
+                    
+                    <div id="adjustmentPreview" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📈 调整统计</h4>
+                        <div id="adjustmentStats"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1284,6 +1328,202 @@ topon	chartboost.com	com.tiktok'></textarea>
             URL.revokeObjectURL(url);
             
             showBudgetMessage('预算配置文件下载成功！', 'success');
+        }
+
+        // 预算调整相关函数
+        function showAdjustmentMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('adjustmentMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function adjustBudget() {
+            const currentBudgetText = document.getElementById('currentBudgetInput').value.trim();
+            const updateRulesText = document.getElementById('updateRulesInput').value.trim();
+            
+            if (!currentBudgetText) {
+                showAdjustmentMessage('请输入当前预算配置');
+                return;
+            }
+            
+            if (!updateRulesText) {
+                showAdjustmentMessage('请输入更新规则');
+                return;
+            }
+            
+            try {
+                // 解析当前预算配置
+                const currentBudgets = new Map();
+                const currentLines = currentBudgetText.split('\n').filter(line => line.trim());
+                
+                currentLines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const colonIndex = trimmedLine.lastIndexOf(':');
+                    if (colonIndex === -1) return;
+                    
+                    const key = trimmedLine.substring(0, colonIndex);
+                    const budget = trimmedLine.substring(colonIndex + 1);
+                    currentBudgets.set(key, budget);
+                });
+                
+                // 解析更新规则
+                const updateRules = [];
+                const updateLines = updateRulesText.split('\n').filter(line => line.trim());
+                
+                updateLines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const parts = trimmedLine.split(/\t+|\s{2,}/).filter(part => part.trim());
+                    if (parts.length < 2) return;
+                    
+                    const newBudget = parts[parts.length - 1]; // 最后一个是预算值
+                    const dimensions = parts.slice(0, -1); // 前面的是维度
+                    
+                    // 生成key，补充#到4个维度
+                    let key = dimensions.join('#');
+                    while (dimensions.length < 4) {
+                        key += '#';
+                        dimensions.push('');
+                    }
+                    
+                    updateRules.push({ key, budget: newBudget });
+                });
+                
+                // 应用更新规则
+                const stats = {
+                    total: currentBudgets.size,
+                    updated: 0,
+                    unchanged: 0,
+                    totalBudgetBefore: 0,
+                    totalBudgetAfter: 0
+                };
+                
+                // 计算更新前总预算
+                currentBudgets.forEach(budget => {
+                    stats.totalBudgetBefore += parseFloat(budget) || 0;
+                });
+                
+                // 应用更新
+                updateRules.forEach(rule => {
+                    if (currentBudgets.has(rule.key)) {
+                        currentBudgets.set(rule.key, rule.budget);
+                        stats.updated++;
+                    }
+                });
+                
+                stats.unchanged = stats.total - stats.updated;
+                
+                // 计算更新后总预算
+                currentBudgets.forEach(budget => {
+                    stats.totalBudgetAfter += parseFloat(budget) || 0;
+                });
+                
+                // 生成结果
+                const results = [];
+                currentBudgets.forEach((budget, key) => {
+                    results.push(`${key}:${budget}`);
+                });
+                
+                // 显示结果
+                document.getElementById('adjustmentOutput').value = results.join('\n');
+                
+                // 显示统计
+                showAdjustmentStats(stats);
+                
+                showAdjustmentMessage(`成功调整 ${stats.updated} 条预算配置！`, 'success');
+                
+            } catch (error) {
+                showAdjustmentMessage('调整失败: ' + error.message);
+            }
+        }
+
+        function showAdjustmentStats(stats) {
+            const previewDiv = document.getElementById('adjustmentPreview');
+            const statsDiv = document.getElementById('adjustmentStats');
+            
+            const budgetChange = stats.totalBudgetAfter - stats.totalBudgetBefore;
+            const changeColor = budgetChange > 0 ? '#27ae60' : budgetChange < 0 ? '#e74c3c' : '#7f8c8d';
+            const changeSymbol = budgetChange > 0 ? '+' : '';
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.total}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">总配置数</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #27ae60;">${stats.updated}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">已更新</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #95a5a6;">${stats.unchanged}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">未变更</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetBefore.toFixed(2)}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">原总预算</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetAfter.toFixed(2)}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">新总预算</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: ${changeColor};">${changeSymbol}${budgetChange.toFixed(2)}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">预算变化</div>
+                    </div>
+                </div>
+            `;
+            
+            statsDiv.innerHTML = html;
+            previewDiv.style.display = 'block';
+        }
+
+        function clearAdjustment() {
+            document.getElementById('currentBudgetInput').value = '';
+            document.getElementById('updateRulesInput').value = '';
+            document.getElementById('adjustmentOutput').value = '';
+            document.getElementById('adjustmentPreview').style.display = 'none';
+        }
+
+        function copyAdjustmentResult() {
+            const result = document.getElementById('adjustmentOutput').value;
+            
+            if (!result) {
+                showAdjustmentMessage('请先执行预算调整');
+                return;
+            }
+            
+            navigator.clipboard.writeText(result).then(() => {
+                showAdjustmentMessage('调整结果已复制到剪贴板！', 'success');
+            }).catch(() => {
+                showAdjustmentMessage('复制失败，请手动选择复制');
+            });
+        }
+
+        function downloadAdjustmentFile() {
+            const result = document.getElementById('adjustmentOutput').value;
+            
+            if (!result) {
+                showAdjustmentMessage('请先执行预算调整');
+                return;
+            }
+            
+            const blob = new Blob([result], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `adjusted_budget_${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showAdjustmentMessage('调整结果文件下载成功！', 'success');
         }
     </script>
 </body>
