@@ -434,12 +434,9 @@
             <div class="tool-body">
                 <div class="input-section">
                     <label for="combinationsInput">维度组合 (每行一个组合，用Tab或空格分隔):</label>
-                    <textarea id="combinationsInput" placeholder='输入维度组合，每行一个，例如：
+                    <textarea id="combinationsInput" placeholder='输入维度组合，每行一个，可以从excel直接复制进来，例如：
 topon	chartboost.com	com.naver.linewebtoon	banner
-topon	mintegral.com	com.shopee.ph	native
-unity	applovin.com	com.tiktok	video
-
-支持的分隔符：Tab键、多个空格'></textarea>
+topon	chartboost.com	com.tiktok'></textarea>
                     
                     <label for="capInput">预算上限 (Cap):</label>
                     <input type="number" id="capInput" placeholder="输入预算数值，例如：100" min="0" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
@@ -1184,8 +1181,16 @@ unity	applovin.com	com.tiktok	video
                         return;
                     }
                     
-                    // 生成配置：用#连接各部分，然后加上:cap
-                    const config = parts.join('#') + ':' + cap;
+                    // 生成配置：用#连接各部分，如果少于4个维度则补充#，然后加上:cap
+                    let config = parts.join('#');
+                    
+                    // 如果维度少于4个，自动补充#到末尾
+                    while (parts.length < 4) {
+                        config += '#';
+                        parts.push(''); // 用于计数
+                    }
+                    
+                    config += ':' + cap;
                     results.push(config);
                     stats.valid++;
                     stats.totalBudget += parseFloat(cap);
