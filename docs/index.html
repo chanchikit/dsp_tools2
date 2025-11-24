@@ -481,6 +481,54 @@ topon	mintegral.com	com.shopee.ph	banner	1000
                         <div id="budgetStats"></div>
                     </div>
                 </div>
+                
+                <!-- 预算与impression对比模块 -->
+                <div class="input-section" style="border-top: 2px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 20px;">📊 预算与Impression对比</h3>
+                    
+                    <label for="budgetCapInput">当前预算配置 (Impression Cap):</label>
+                    <textarea id="budgetCapInput" placeholder='输入当前的预算配置，每行一个，格式：
+adx#first_ssp#bundle#placement:impression_cap
+adx#first_ssp#bundle#:impression_cap
+
+例如：
+flatads#chartboost.com#com.vitastudio.mahjong#0d9d8f05-c123-42d9-a1b3-f83a6354217b:1000
+flatads#chartboost.com#com.vitastudio.mahjong#:500
+topon#mintegral.com#com.shopee.ph#banner:2000'></textarea>
+                    
+                    <label for="yesterdayImpInput">昨天实际Impression数据 (可以从excel直接复制):</label>
+                    <textarea id="yesterdayImpInput" placeholder='输入昨天的impression数据，每行一个，格式：
+adx	first_ssp	bundle	placement	impression_count
+adx	first_ssp	bundle	impression_count
+
+例如：
+flatads	chartboost.com	com.vitastudio.mahjong	0d9d8f05-c123-42d9-a1b3-f83a6354217b	800
+flatads	chartboost.com	com.vitastudio.mahjong	600
+topon	mintegral.com	com.shopee.ph	banner	2500
+
+注意：支持4个输入项的智能识别（参考更新规则模式）'></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="compareImpressions()">对比分析</button>
+                        <button class="btn-secondary" onclick="clearComparison()">清空对比</button>
+                    </div>
+                    
+                    <div id="comparisonMessage"></div>
+                    
+                    <div id="comparisonResults" style="margin-top: 20px; display: none;">
+                        <label>对比结果:</label>
+                        <div id="comparisonTable" style="background: white; border-radius: 8px; padding: 20px; margin-top: 10px; overflow-x: auto;"></div>
+                        
+                        <div class="button-group" style="margin-top: 15px;">
+                            <button class="btn-success" onclick="exportComparisonCSV()">导出CSV</button>
+                        </div>
+                        
+                        <div id="comparisonSummary" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                            <h4 style="color: #2c3e50; margin-bottom: 10px;">📈 对比统计</h4>
+                            <div id="comparisonStats"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1392,6 +1440,315 @@ topon	mintegral.com	com.shopee.ph	banner	1000
             URL.revokeObjectURL(url);
             
             showBudgetMessage('预算配置文件下载成功！', 'success');
+        }
+
+        // 预算与impression对比相关函数
+        function showComparisonMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('comparisonMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function compareImpressions() {
+            const budgetCapText = document.getElementById('budgetCapInput').value.trim();
+            const yesterdayImpText = document.getElementById('yesterdayImpInput').value.trim();
+            
+            if (!budgetCapText) {
+                showComparisonMessage('请输入当前预算配置');
+                return;
+            }
+            
+            if (!yesterdayImpText) {
+                showComparisonMessage('请输入昨天impression数据');
+                return;
+            }
+            
+            try {
+                // 解析预算配置
+                const budgetCaps = new Map();
+                const budgetLines = budgetCapText.split('\n').filter(line => line.trim());
+                
+                budgetLines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const colonIndex = trimmedLine.lastIndexOf(':');
+                    if (colonIndex === -1) return;
+                    
+                    const key = trimmedLine.substring(0, colonIndex);
+                    const cap = parseInt(trimmedLine.substring(colonIndex + 1));
+                    if (!isNaN(cap)) {
+                        budgetCaps.set(key, cap);
+                    }
+                });
+                
+                // 解析昨天impression数据（使用与更新规则相同的逻辑）
+                const yesterdayImps = new Map();
+                const impLines = yesterdayImpText.split('\n').filter(line => line.trim());
+                
+                impLines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const parts = trimmedLine.split(/\t+|\s{2,}/).filter(part => part.trim());
+                    if (parts.length < 1) return;
+                    
+                    let impressionCount = null;
+                    let dimensions = parts;
+                    
+                    // 使用与更新规则相同的智能识别逻辑
+                    if (parts.length === 4) {
+                        const lastPart = parts[3];
+                        const isNumber = !isNaN(lastPart) && lastPart.trim() !== '';
+                        const isNotThousandMultiple = isNumber && (parseFloat(lastPart) % 1000 !== 0);
+                        
+                        if (isNumber && isNotThousandMultiple) {
+                            // 按adx+first_ssp+bundle+placement模式
+                            dimensions = parts;
+                            impressionCount = null; // 这种情况下没有impression数据
+                        } else if (isNumber) {
+                            // 最后一位是impression数据
+                            impressionCount = parseInt(lastPart);
+                            dimensions = parts.slice(0, -1);
+                        } else {
+                            dimensions = parts;
+                            impressionCount = null;
+                        }
+                    } else {
+                        // 其他情况：检查最后一个部分是否为数字
+                        const lastPart = parts[parts.length - 1];
+                        if (!isNaN(lastPart) && lastPart.trim() !== '') {
+                            impressionCount = parseInt(lastPart);
+                            dimensions = parts.slice(0, -1);
+                        }
+                    }
+                    
+                    if (impressionCount !== null && !isNaN(impressionCount)) {
+                        // 生成key，补充#到4个维度
+                        let key = dimensions.join('#');
+                        while (dimensions.length < 4) {
+                            key += '#';
+                            dimensions.push('');
+                        }
+                        
+                        yesterdayImps.set(key, impressionCount);
+                    }
+                });
+                
+                // 生成对比结果
+                const comparisonData = [];
+                const stats = {
+                    total: 0,
+                    higher: 0,
+                    lower: 0,
+                    equal: 0,
+                    noData: 0,
+                    totalCap: 0,
+                    totalImp: 0
+                };
+                
+                // 合并所有key
+                const allKeys = new Set([...budgetCaps.keys(), ...yesterdayImps.keys()]);
+                
+                allKeys.forEach(key => {
+                    const cap = budgetCaps.get(key) || 0;
+                    const imp = yesterdayImps.get(key) || 0;
+                    
+                    let status = 'no-data';
+                    let statusText = '无数据';
+                    let color = '#95a5a6';
+                    
+                    if (cap > 0 && imp > 0) {
+                        if (cap > imp) {
+                            status = 'higher';
+                            statusText = '预算充足';
+                            color = '#27ae60';
+                            stats.higher++;
+                        } else if (cap < imp) {
+                            status = 'lower';
+                            statusText = '预算不足';
+                            color = '#e74c3c';
+                            stats.lower++;
+                        } else {
+                            status = 'equal';
+                            statusText = '预算匹配';
+                            color = '#f39c12';
+                            stats.equal++;
+                        }
+                    } else if (cap > 0 && imp === 0) {
+                        status = 'no-imp';
+                        statusText = '无曝光';
+                        color = '#3498db';
+                        stats.noData++;
+                    } else if (cap === 0 && imp > 0) {
+                        status = 'no-cap';
+                        statusText = '无预算';
+                        color = '#9b59b6';
+                        stats.noData++;
+                    }
+                    
+                    comparisonData.push({
+                        key,
+                        cap,
+                        imp,
+                        status,
+                        statusText,
+                        color,
+                        ratio: cap > 0 ? (imp / cap * 100).toFixed(1) : 'N/A'
+                    });
+                    
+                    stats.total++;
+                    stats.totalCap += cap;
+                    stats.totalImp += imp;
+                });
+                
+                // 显示对比结果
+                displayComparisonResults(comparisonData, stats);
+                
+                showComparisonMessage(`对比完成！共分析 ${stats.total} 个组合`, 'success');
+                
+            } catch (error) {
+                showComparisonMessage('对比失败: ' + error.message);
+            }
+        }
+
+        function displayComparisonResults(data, stats) {
+            // 保存数据供导出使用
+            globalComparisonData = data;
+            
+            const resultsDiv = document.getElementById('comparisonResults');
+            const tableDiv = document.getElementById('comparisonTable');
+            const statsDiv = document.getElementById('comparisonStats');
+            
+            // 生成对比表格
+            let tableHtml = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #34495e; color: white;">
+                            <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">组合</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">预算Cap</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">昨日Impression</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">使用率</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            // 按状态排序：预算不足 > 预算充足 > 其他
+            data.sort((a, b) => {
+                const order = { 'lower': 0, 'higher': 1, 'equal': 2, 'no-imp': 3, 'no-cap': 4, 'no-data': 5 };
+                return order[a.status] - order[b.status];
+            });
+            
+            data.forEach(item => {
+                tableHtml += `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px; border: 1px solid #ddd; font-family: monospace; font-size: 12px;">${item.key}</td>
+                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${item.cap.toLocaleString()}</td>
+                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${item.imp.toLocaleString()}</td>
+                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${item.ratio}%</td>
+                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">
+                            <span style="padding: 4px 8px; border-radius: 12px; color: white; background: ${item.color}; font-size: 12px;">
+                                ${item.statusText}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHtml += '</tbody></table>';
+            tableDiv.innerHTML = tableHtml;
+            
+            // 生成统计信息
+            const utilizationRate = stats.totalCap > 0 ? (stats.totalImp / stats.totalCap * 100).toFixed(1) : 0;
+            
+            let statsHtml = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.total}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">总组合数</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #e74c3c;">${stats.lower}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">预算不足</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #27ae60;">${stats.higher}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">预算充足</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #f39c12;">${stats.equal}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">预算匹配</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #3498db;">${stats.totalCap.toLocaleString()}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">总预算</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #9b59b6;">${stats.totalImp.toLocaleString()}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">总曝光</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #e67e22;">${utilizationRate}%</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">预算使用率</div>
+                    </div>
+                </div>
+            `;
+            
+            statsDiv.innerHTML = statsHtml;
+            resultsDiv.style.display = 'block';
+        }
+
+        function clearComparison() {
+            document.getElementById('budgetCapInput').value = '';
+            document.getElementById('yesterdayImpInput').value = '';
+            document.getElementById('comparisonResults').style.display = 'none';
+        }
+
+        // 全局变量存储对比数据，用于导出
+        let globalComparisonData = [];
+
+        function exportComparisonCSV() {
+            if (globalComparisonData.length === 0) {
+                showComparisonMessage('没有可导出的对比数据');
+                return;
+            }
+            
+            try {
+                // 生成CSV内容
+                let csvContent = '\uFEFF'; // BOM for UTF-8
+                csvContent += '组合,ADX,First_SSP,Bundle,Placement,预算Cap,昨日Impression,使用率(%),状态\n';
+                
+                globalComparisonData.forEach(item => {
+                    const keyParts = item.key.split('#');
+                    const adx = keyParts[0] || '';
+                    const firstSsp = keyParts[1] || '';
+                    const bundle = keyParts[2] || '';
+                    const placement = keyParts[3] || '';
+                    const usageRate = item.ratio === 'N/A' ? '0' : item.ratio;
+                    
+                    csvContent += `"${item.key}","${adx}","${firstSsp}","${bundle}","${placement}",${item.cap},${item.imp},"${usageRate}","${item.statusText}"\n`;
+                });
+                
+                // 创建并下载文件
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `budget_impression_comparison_${new Date().toISOString().slice(0, 10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showComparisonMessage('CSV文件导出成功！', 'success');
+                
+            } catch (error) {
+                showComparisonMessage('导出失败: ' + error.message);
+            }
         }
     </script>
 </body>
