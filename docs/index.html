@@ -451,9 +451,10 @@ adx	first_ssp	bundle	[预算值]
 例如：
 flatads	chartboost.com	com.vitastudio.mahjong	0d9d8f05-c123-42d9-a1b3-f83a6354217b	200
 flatads	chartboost.com	com.vitastudio.mahjong
-topon	mintegral.com	com.shopee.ph	banner
+topon	mintegral.com	wp.wattpad	4621502
+topon	mintegral.com	com.shopee.ph	banner	1000
 
-注意：如果没有指定预算值，将使用下方的默认预算'></textarea>
+注意：4个输入项时，如果最后一位是数字但不是1000的倍数，将按adx+first_ssp+bundle+placement模式处理'></textarea>
                     
                     <label for="defaultCapInput">默认预算 (当更新规则中没有指定预算时使用):</label>
                     <input type="number" id="defaultCapInput" placeholder="输入默认预算数值，例如：100" min="0" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
@@ -1203,11 +1204,32 @@ topon	mintegral.com	com.shopee.ph	banner
                     let newBudget = null;
                     let dimensions = parts;
                     
-                    // 检查最后一个部分是否为数字（预算值）
-                    const lastPart = parts[parts.length - 1];
-                    if (!isNaN(lastPart) && lastPart.trim() !== '') {
-                        newBudget = lastPart;
-                        dimensions = parts.slice(0, -1);
+                    // 特殊处理：如果有4个输入项，且最后一位是纯数字但不是1000的倍数，按adx+first_ssp+bundle+placement模式处理
+                    if (parts.length === 4) {
+                        const lastPart = parts[3];
+                        const isNumber = !isNaN(lastPart) && lastPart.trim() !== '';
+                        const isNotThousandMultiple = isNumber && (parseFloat(lastPart) % 1000 !== 0);
+                        
+                        if (isNumber && isNotThousandMultiple) {
+                            // 按adx+first_ssp+bundle+placement模式，最后一位不是预算值
+                            dimensions = parts; // 保持4个维度
+                            newBudget = null; // 使用默认预算
+                        } else if (isNumber) {
+                            // 最后一位是1000的倍数，视为预算值
+                            newBudget = lastPart;
+                            dimensions = parts.slice(0, -1);
+                        } else {
+                            // 最后一位不是数字，保持4个维度
+                            dimensions = parts;
+                            newBudget = null;
+                        }
+                    } else {
+                        // 其他情况：检查最后一个部分是否为数字（预算值）
+                        const lastPart = parts[parts.length - 1];
+                        if (!isNaN(lastPart) && lastPart.trim() !== '') {
+                            newBudget = lastPart;
+                            dimensions = parts.slice(0, -1);
+                        }
                     }
                     
                     // 如果没有指定预算值，使用默认预算
