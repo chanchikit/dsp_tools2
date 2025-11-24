@@ -427,47 +427,12 @@
         <!-- 细粒度预算生成工具 -->
         <div id="budget-generator" class="tool-content">
             <div class="tool-header">
-                <h2>💰 细粒度预算生成工具</h2>
-                <p>生成细粒度预算配置，支持多维度组合</p>
+                <h2>💰 细粒度预算调整工具</h2>
+                <p>调整和生成细粒度预算配置，支持批量更新</p>
             </div>
             
             <div class="tool-body">
                 <div class="input-section">
-                    <label for="combinationsInput">维度组合 (每行一个组合，用Tab或空格分隔):</label>
-                    <textarea id="combinationsInput" placeholder='输入维度组合，每行一个，可以从excel直接复制进来，例如：
-topon	chartboost.com	com.naver.linewebtoon	banner
-topon	chartboost.com	com.tiktok'></textarea>
-                    
-                    <label for="capInput">预算上限 (Cap):</label>
-                    <input type="number" id="capInput" placeholder="输入预算数值，例如：100" min="0" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
-                    
-                    <div class="button-group">
-                        <button class="btn-primary" onclick="generateBudget()">生成预算配置</button>
-                        <button class="btn-secondary" onclick="clearBudget()">清空</button>
-                    </div>
-                    
-                    <div id="budgetMessage"></div>
-                </div>
-                
-                <div class="output-section">
-                    <label>生成结果:</label>
-                    <textarea id="budgetOutput" readonly placeholder="生成的预算配置将显示在这里..."></textarea>
-                    
-                    <div class="button-group">
-                        <button class="btn-success" onclick="copyBudgetResult()">复制结果</button>
-                        <button class="btn-secondary" onclick="downloadBudgetFile()">下载文件</button>
-                    </div>
-                    
-                    <div id="budgetPreview" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
-                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📊 预览统计</h4>
-                        <div id="budgetStats"></div>
-                    </div>
-                </div>
-                
-                <!-- 预算调整模块 -->
-                <div class="input-section" style="border-top: 2px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
-                    <h3 style="color: #2c3e50; margin-bottom: 20px;">🔧 预算调整</h3>
-                    
                     <label for="currentBudgetInput">当前预算配置:</label>
                     <textarea id="currentBudgetInput" placeholder='输入当前的预算配置，每行一个，格式：
 adx#first_ssp#bundle#placement:预算值
@@ -479,32 +444,40 @@ flatads#chartboost.com#com.vitastudio.mahjong#:50
 topon#mintegral.com#com.shopee.ph#banner:200'></textarea>
                     
                     <label for="updateRulesInput">更新规则 (可以从excel直接复制):</label>
-                    <textarea id="updateRulesInput" placeholder='输入需要更新的组合和预算，每行一个，格式：
-adx	first_ssp	bundle	placement	新预算值
-adx	first_ssp	bundle	新预算值
+                    <textarea id="updateRulesInput" placeholder='输入需要更新的组合，每行一个，格式：
+adx	first_ssp	bundle	placement	[预算值]
+adx	first_ssp	bundle	[预算值]
 
 例如：
 flatads	chartboost.com	com.vitastudio.mahjong	0d9d8f05-c123-42d9-a1b3-f83a6354217b	200
-flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
+flatads	chartboost.com	com.vitastudio.mahjong
+topon	mintegral.com	com.shopee.ph	banner
+
+注意：如果没有指定预算值，将使用下方的默认预算'></textarea>
+                    
+                    <label for="defaultCapInput">默认预算 (当更新规则中没有指定预算时使用):</label>
+                    <input type="number" id="defaultCapInput" placeholder="输入默认预算数值，例如：100" min="0" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
                     
                     <div class="button-group">
                         <button class="btn-primary" onclick="adjustBudget()">调整预算</button>
-                        <button class="btn-secondary" onclick="clearAdjustment()">清空调整</button>
+                        <button class="btn-secondary" onclick="clearAdjustment()">清空</button>
                     </div>
                     
-                    <div id="adjustmentMessage"></div>
-                    
+                    <div id="budgetMessage"></div>
+                </div>
+                
+                <div class="output-section">
                     <label>调整结果:</label>
-                    <textarea id="adjustmentOutput" readonly placeholder="调整后的预算配置将显示在这里..."></textarea>
+                    <textarea id="budgetOutput" readonly placeholder="调整后的预算配置将显示在这里..."></textarea>
                     
                     <div class="button-group">
-                        <button class="btn-success" onclick="copyAdjustmentResult()">复制结果</button>
-                        <button class="btn-secondary" onclick="downloadAdjustmentFile()">下载文件</button>
+                        <button class="btn-success" onclick="copyBudgetResult()">复制结果</button>
+                        <button class="btn-secondary" onclick="downloadBudgetFile()">下载文件</button>
                     </div>
                     
-                    <div id="adjustmentPreview" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
+                    <div id="budgetPreview" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
                         <h4 style="color: #2c3e50; margin-bottom: 10px;">📈 调整统计</h4>
-                        <div id="adjustmentStats"></div>
+                        <div id="budgetStats"></div>
                     </div>
                 </div>
             </div>
@@ -1187,188 +1160,34 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
             }, 3000);
         }
 
-        function generateBudget() {
-            const combinationsText = document.getElementById('combinationsInput').value.trim();
-            const cap = document.getElementById('capInput').value.trim();
-            
-            if (!combinationsText) {
-                showBudgetMessage('请输入维度组合');
-                return;
-            }
-            
-            if (!cap || isNaN(cap) || parseFloat(cap) < 0) {
-                showBudgetMessage('请输入有效的预算数值');
-                return;
-            }
-            
-            try {
-                const lines = combinationsText.split('\n').filter(line => line.trim());
-                const results = [];
-                const stats = {
-                    total: 0,
-                    valid: 0,
-                    invalid: 0,
-                    totalBudget: 0
-                };
-                
-                lines.forEach((line, index) => {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine) return;
-                    
-                    stats.total++;
-                    
-                    // 支持多种分隔符：Tab、多个空格
-                    const parts = trimmedLine.split(/\t+|\s{2,}/).filter(part => part.trim());
-                    
-                    if (parts.length === 0) {
-                        stats.invalid++;
-                        return;
-                    }
-                    
-                    // 生成配置：用#连接各部分，如果少于4个维度则补充#，然后加上:cap
-                    let config = parts.join('#');
-                    
-                    // 如果维度少于4个，自动补充#到末尾
-                    while (parts.length < 4) {
-                        config += '#';
-                        parts.push(''); // 用于计数
-                    }
-                    
-                    config += ':' + cap;
-                    results.push(config);
-                    stats.valid++;
-                    stats.totalBudget += parseFloat(cap);
-                });
-                
-                if (results.length === 0) {
-                    showBudgetMessage('没有有效的维度组合');
-                    return;
-                }
-                
-                // 显示结果
-                document.getElementById('budgetOutput').value = results.join('\n');
-                
-                // 显示统计信息
-                showBudgetStats(stats);
-                
-                showBudgetMessage(`成功生成 ${results.length} 条预算配置！`, 'success');
-                
-            } catch (error) {
-                showBudgetMessage('生成失败: ' + error.message);
-            }
-        }
-
-        function showBudgetStats(stats) {
-            const previewDiv = document.getElementById('budgetPreview');
-            const statsDiv = document.getElementById('budgetStats');
-            
-            let html = `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 24px; font-weight: bold; color: #2980b9;">${stats.total}</div>
-                        <div style="color: #7f8c8d;">总行数</div>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 24px; font-weight: bold; color: #27ae60;">${stats.valid}</div>
-                        <div style="color: #7f8c8d;">有效配置</div>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 24px; font-weight: bold; color: #e74c3c;">${stats.invalid}</div>
-                        <div style="color: #7f8c8d;">无效行</div>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 24px; font-weight: bold; color: #f39c12;">${stats.totalBudget.toFixed(2)}</div>
-                        <div style="color: #7f8c8d;">总预算</div>
-                    </div>
-                </div>
-            `;
-            
-            statsDiv.innerHTML = html;
-            previewDiv.style.display = 'block';
-        }
-
-        function clearBudget() {
-            document.getElementById('combinationsInput').value = '';
-            document.getElementById('capInput').value = '';
-            document.getElementById('budgetOutput').value = '';
-            document.getElementById('budgetPreview').style.display = 'none';
-        }
-
-        function copyBudgetResult() {
-            const result = document.getElementById('budgetOutput').value;
-            
-            if (!result) {
-                showBudgetMessage('请先生成预算配置');
-                return;
-            }
-            
-            navigator.clipboard.writeText(result).then(() => {
-                showBudgetMessage('预算配置已复制到剪贴板！', 'success');
-            }).catch(() => {
-                showBudgetMessage('复制失败，请手动选择复制');
-            });
-        }
-
-        function downloadBudgetFile() {
-            const result = document.getElementById('budgetOutput').value;
-            
-            if (!result) {
-                showBudgetMessage('请先生成预算配置');
-                return;
-            }
-            
-            const blob = new Blob([result], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `budget_config_${Date.now()}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showBudgetMessage('预算配置文件下载成功！', 'success');
-        }
-
-        // 预算调整相关函数
-        function showAdjustmentMessage(text, type = 'error') {
-            const messageDiv = document.getElementById('adjustmentMessage');
-            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
-            setTimeout(() => {
-                messageDiv.innerHTML = '';
-            }, 3000);
-        }
-
         function adjustBudget() {
             const currentBudgetText = document.getElementById('currentBudgetInput').value.trim();
             const updateRulesText = document.getElementById('updateRulesInput').value.trim();
-            
-            if (!currentBudgetText) {
-                showAdjustmentMessage('请输入当前预算配置');
-                return;
-            }
+            const defaultCap = document.getElementById('defaultCapInput').value.trim();
             
             if (!updateRulesText) {
-                showAdjustmentMessage('请输入更新规则');
+                showBudgetMessage('请输入更新规则');
                 return;
             }
             
             try {
                 // 解析当前预算配置
                 const currentBudgets = new Map();
-                const currentLines = currentBudgetText.split('\n').filter(line => line.trim());
-                
-                currentLines.forEach(line => {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine) return;
+                if (currentBudgetText) {
+                    const currentLines = currentBudgetText.split('\n').filter(line => line.trim());
                     
-                    const colonIndex = trimmedLine.lastIndexOf(':');
-                    if (colonIndex === -1) return;
-                    
-                    const key = trimmedLine.substring(0, colonIndex);
-                    const budget = trimmedLine.substring(colonIndex + 1);
-                    currentBudgets.set(key, budget);
-                });
+                    currentLines.forEach(line => {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine) return;
+                        
+                        const colonIndex = trimmedLine.lastIndexOf(':');
+                        if (colonIndex === -1) return;
+                        
+                        const key = trimmedLine.substring(0, colonIndex);
+                        const budget = trimmedLine.substring(colonIndex + 1);
+                        currentBudgets.set(key, budget);
+                    });
+                }
                 
                 // 解析更新规则
                 const updateRules = [];
@@ -1379,10 +1198,26 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
                     if (!trimmedLine) return;
                     
                     const parts = trimmedLine.split(/\t+|\s{2,}/).filter(part => part.trim());
-                    if (parts.length < 2) return;
+                    if (parts.length < 1) return;
                     
-                    const newBudget = parts[parts.length - 1]; // 最后一个是预算值
-                    const dimensions = parts.slice(0, -1); // 前面的是维度
+                    let newBudget = null;
+                    let dimensions = parts;
+                    
+                    // 检查最后一个部分是否为数字（预算值）
+                    const lastPart = parts[parts.length - 1];
+                    if (!isNaN(lastPart) && lastPart.trim() !== '') {
+                        newBudget = lastPart;
+                        dimensions = parts.slice(0, -1);
+                    }
+                    
+                    // 如果没有指定预算值，使用默认预算
+                    if (newBudget === null) {
+                        if (!defaultCap || isNaN(defaultCap)) {
+                            showBudgetMessage('请输入默认预算或在更新规则中指定预算值');
+                            return;
+                        }
+                        newBudget = defaultCap;
+                    }
                     
                     // 生成key，补充#到4个维度
                     let key = dimensions.join('#');
@@ -1396,9 +1231,10 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
                 
                 // 应用更新规则
                 const stats = {
-                    total: currentBudgets.size,
+                    originalCount: currentBudgets.size,
+                    newCount: 0,
                     updated: 0,
-                    unchanged: 0,
+                    unchanged: currentBudgets.size,
                     totalBudgetBefore: 0,
                     totalBudgetAfter: 0
                 };
@@ -1408,15 +1244,19 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
                     stats.totalBudgetBefore += parseFloat(budget) || 0;
                 });
                 
-                // 应用更新
+                // 应用更新规则
                 updateRules.forEach(rule => {
                     if (currentBudgets.has(rule.key)) {
+                        // 更新现有配置
                         currentBudgets.set(rule.key, rule.budget);
                         stats.updated++;
+                        stats.unchanged--;
+                    } else {
+                        // 添加新配置
+                        currentBudgets.set(rule.key, rule.budget);
+                        stats.newCount++;
                     }
                 });
-                
-                stats.unchanged = stats.total - stats.updated;
                 
                 // 计算更新后总预算
                 currentBudgets.forEach(budget => {
@@ -1430,21 +1270,22 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
                 });
                 
                 // 显示结果
-                document.getElementById('adjustmentOutput').value = results.join('\n');
+                document.getElementById('budgetOutput').value = results.join('\n');
                 
                 // 显示统计
-                showAdjustmentStats(stats);
+                showBudgetStats(stats);
                 
-                showAdjustmentMessage(`成功调整 ${stats.updated} 条预算配置！`, 'success');
+                const totalChanges = stats.updated + stats.newCount;
+                showBudgetMessage(`成功处理 ${totalChanges} 条配置 (更新${stats.updated}条，新增${stats.newCount}条)！`, 'success');
                 
             } catch (error) {
-                showAdjustmentMessage('调整失败: ' + error.message);
+                showBudgetMessage('调整失败: ' + error.message);
             }
         }
 
-        function showAdjustmentStats(stats) {
-            const previewDiv = document.getElementById('adjustmentPreview');
-            const statsDiv = document.getElementById('adjustmentStats');
+        function showBudgetStats(stats) {
+            const previewDiv = document.getElementById('budgetPreview');
+            const statsDiv = document.getElementById('budgetStats');
             
             const budgetChange = stats.totalBudgetAfter - stats.totalBudgetBefore;
             const changeColor = budgetChange > 0 ? '#27ae60' : budgetChange < 0 ? '#e74c3c' : '#7f8c8d';
@@ -1453,12 +1294,16 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
             let html = `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
                     <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.total}</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.originalCount + stats.newCount}</div>
                         <div style="color: #7f8c8d; font-size: 12px;">总配置数</div>
                     </div>
                     <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
                         <div style="font-size: 20px; font-weight: bold; color: #27ae60;">${stats.updated}</div>
                         <div style="color: #7f8c8d; font-size: 12px;">已更新</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #3498db;">${stats.newCount}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">新增</div>
                     </div>
                     <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
                         <div style="font-size: 20px; font-weight: bold; color: #95a5a6;">${stats.unchanged}</div>
@@ -1486,30 +1331,31 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
         function clearAdjustment() {
             document.getElementById('currentBudgetInput').value = '';
             document.getElementById('updateRulesInput').value = '';
-            document.getElementById('adjustmentOutput').value = '';
-            document.getElementById('adjustmentPreview').style.display = 'none';
+            document.getElementById('defaultCapInput').value = '';
+            document.getElementById('budgetOutput').value = '';
+            document.getElementById('budgetPreview').style.display = 'none';
         }
 
-        function copyAdjustmentResult() {
-            const result = document.getElementById('adjustmentOutput').value;
+        function copyBudgetResult() {
+            const result = document.getElementById('budgetOutput').value;
             
             if (!result) {
-                showAdjustmentMessage('请先执行预算调整');
+                showBudgetMessage('请先执行预算调整');
                 return;
             }
             
             navigator.clipboard.writeText(result).then(() => {
-                showAdjustmentMessage('调整结果已复制到剪贴板！', 'success');
+                showBudgetMessage('调整结果已复制到剪贴板！', 'success');
             }).catch(() => {
-                showAdjustmentMessage('复制失败，请手动选择复制');
+                showBudgetMessage('复制失败，请手动选择复制');
             });
         }
 
-        function downloadAdjustmentFile() {
-            const result = document.getElementById('adjustmentOutput').value;
+        function downloadBudgetFile() {
+            const result = document.getElementById('budgetOutput').value;
             
             if (!result) {
-                showAdjustmentMessage('请先执行预算调整');
+                showBudgetMessage('请先执行预算调整');
                 return;
             }
             
@@ -1517,13 +1363,13 @@ flatads	chartboost.com	com.vitastudio.mahjong	3000'></textarea>
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `adjusted_budget_${Date.now()}.txt`;
+            a.download = `budget_config_${Date.now()}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            showAdjustmentMessage('调整结果文件下载成功！', 'success');
+            showBudgetMessage('预算配置文件下载成功！', 'success');
         }
     </script>
 </body>
