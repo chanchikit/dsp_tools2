@@ -443,8 +443,21 @@ flatads#chartboost.com#com.vitastudio.mahjong#0d9d8f05-c123-42d9-a1b3-f83a635421
 flatads#chartboost.com#com.vitastudio.mahjong#:50
 topon#mintegral.com#com.shopee.ph#banner:200'></textarea>
                     
-                    <label for="updateRulesInput">更新规则 (可以从excel直接复制):</label>
-                    <textarea id="updateRulesInput" placeholder='输入需要更新的组合，每行一个，格式：
+                    <label>操作模式:</label>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
+                            <input type="radio" name="operationMode" value="update" checked style="margin-right: 8px;">
+                            更新预算
+                        </label>
+                        <label style="display: inline-flex; align-items: center; font-weight: normal;">
+                            <input type="radio" name="operationMode" value="delete" style="margin-right: 8px;">
+                            删除预算
+                        </label>
+                    </div>
+                    
+                    <div id="updateMode">
+                        <label for="updateRulesInput">更新规则 (可以从excel直接复制):</label>
+                        <textarea id="updateRulesInput" placeholder='输入需要更新的组合，每行一个，格式：
 adx	first_ssp	bundle	placement	[预算值]
 adx	first_ssp	bundle	[预算值]
 
@@ -455,9 +468,24 @@ topon	mintegral.com	wp.wattpad	4621502
 topon	mintegral.com	com.shopee.ph	banner	1000
 
 注意：4个输入项时，如果最后一位是数字但不是1000的倍数，将按adx+first_ssp+bundle+placement模式处理'></textarea>
+                        
+                        <label for="defaultCapInput">默认预算 (当更新规则中没有指定预算时使用):</label>
+                        <input type="number" id="defaultCapInput" placeholder="输入默认预算数值，例如：100" min="0" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
+                    </div>
                     
-                    <label for="defaultCapInput">默认预算 (当更新规则中没有指定预算时使用):</label>
-                    <input type="number" id="defaultCapInput" placeholder="输入默认预算数值，例如：100" min="0" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
+                    <div id="deleteMode" style="display: none;">
+                        <label for="deleteRulesInput">删除规则 (可以从excel直接复制):</label>
+                        <textarea id="deleteRulesInput" placeholder='输入需要删除的组合，每行一个，格式：
+adx	first_ssp	bundle	placement
+adx	first_ssp	bundle
+
+例如：
+flatads	chartboost.com	com.vitastudio.mahjong	0d9d8f05-c123-42d9-a1b3-f83a6354217b
+flatads	chartboost.com	com.vitastudio.mahjong
+topon	mintegral.com	wp.wattpad	4621502
+
+注意：支持4个输入项的智能识别（参考更新规则模式）'></textarea>
+                    </div>
                     
                     <div class="button-group">
                         <button class="btn-primary" onclick="adjustBudget()">调整预算</button>
@@ -1209,8 +1237,42 @@ topon	mintegral.com	com.shopee.ph	banner	2500
             }, 3000);
         }
 
+        // 操作模式切换
+        document.addEventListener('DOMContentLoaded', function() {
+            const radioButtons = document.querySelectorAll('input[name="operationMode"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const updateMode = document.getElementById('updateMode');
+                    const deleteMode = document.getElementById('deleteMode');
+                    
+                    if (this.value === 'update') {
+                        updateMode.style.display = 'block';
+                        deleteMode.style.display = 'none';
+                    } else {
+                        updateMode.style.display = 'none';
+                        deleteMode.style.display = 'block';
+                    }
+                });
+            });
+        });
+
         function adjustBudget() {
             const currentBudgetText = document.getElementById('currentBudgetInput').value.trim();
+            const operationMode = document.querySelector('input[name="operationMode"]:checked').value;
+            
+            if (!currentBudgetText) {
+                showBudgetMessage('请输入当前预算配置');
+                return;
+            }
+            
+            if (operationMode === 'update') {
+                performUpdateBudget(currentBudgetText);
+            } else {
+                performDeleteBudget(currentBudgetText);
+            }
+        }
+
+        function performUpdateBudget(currentBudgetText) {
             const updateRulesText = document.getElementById('updateRulesInput').value.trim();
             const defaultCap = document.getElementById('defaultCapInput').value.trim();
             
@@ -1252,27 +1314,23 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                     let newBudget = null;
                     let dimensions = parts;
                     
-                    // 特殊处理：如果有4个输入项，且最后一位是纯数字但不是1000的倍数，按adx+first_ssp+bundle+placement模式处理
+                    // 使用智能识别逻辑
                     if (parts.length === 4) {
                         const lastPart = parts[3];
                         const isNumber = !isNaN(lastPart) && lastPart.trim() !== '';
                         const isNotThousandMultiple = isNumber && (parseFloat(lastPart) % 1000 !== 0);
                         
                         if (isNumber && isNotThousandMultiple) {
-                            // 按adx+first_ssp+bundle+placement模式，最后一位不是预算值
-                            dimensions = parts; // 保持4个维度
-                            newBudget = null; // 使用默认预算
+                            dimensions = parts;
+                            newBudget = null;
                         } else if (isNumber) {
-                            // 最后一位是1000的倍数，视为预算值
                             newBudget = lastPart;
                             dimensions = parts.slice(0, -1);
                         } else {
-                            // 最后一位不是数字，保持4个维度
                             dimensions = parts;
                             newBudget = null;
                         }
                     } else {
-                        // 其他情况：检查最后一个部分是否为数字（预算值）
                         const lastPart = parts[parts.length - 1];
                         if (!isNaN(lastPart) && lastPart.trim() !== '') {
                             newBudget = lastPart;
@@ -1280,7 +1338,6 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                         }
                     }
                     
-                    // 如果没有指定预算值，使用默认预算
                     if (newBudget === null) {
                         if (!defaultCap || isNaN(defaultCap)) {
                             showBudgetMessage('请输入默认预算或在更新规则中指定预算值');
@@ -1289,7 +1346,6 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                         newBudget = defaultCap;
                     }
                     
-                    // 生成key，补充#到4个维度
                     let key = dimensions.join('#');
                     while (dimensions.length < 4) {
                         key += '#';
@@ -1309,26 +1365,134 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                     totalBudgetAfter: 0
                 };
                 
-                // 计算更新前总预算
                 currentBudgets.forEach(budget => {
                     stats.totalBudgetBefore += parseFloat(budget) || 0;
                 });
                 
-                // 应用更新规则
                 updateRules.forEach(rule => {
                     if (currentBudgets.has(rule.key)) {
-                        // 更新现有配置
                         currentBudgets.set(rule.key, rule.budget);
                         stats.updated++;
                         stats.unchanged--;
                     } else {
-                        // 添加新配置
                         currentBudgets.set(rule.key, rule.budget);
                         stats.newCount++;
                     }
                 });
                 
-                // 计算更新后总预算
+                currentBudgets.forEach(budget => {
+                    stats.totalBudgetAfter += parseFloat(budget) || 0;
+                });
+                
+                const results = [];
+                currentBudgets.forEach((budget, key) => {
+                    results.push(`${key}:${budget}`);
+                });
+                
+                document.getElementById('budgetOutput').value = results.join('\n');
+                showBudgetStats(stats);
+                
+                const totalChanges = stats.updated + stats.newCount;
+                showBudgetMessage(`成功处理 ${totalChanges} 条配置 (更新${stats.updated}条，新增${stats.newCount}条)！`, 'success');
+                
+            } catch (error) {
+                showBudgetMessage('更新失败: ' + error.message);
+            }
+        }
+
+        function performDeleteBudget(currentBudgetText) {
+            const deleteRulesText = document.getElementById('deleteRulesInput').value.trim();
+            
+            if (!deleteRulesText) {
+                showBudgetMessage('请输入删除规则');
+                return;
+            }
+            
+            try {
+                // 解析当前预算配置
+                const currentBudgets = new Map();
+                const currentLines = currentBudgetText.split('\n').filter(line => line.trim());
+                
+                currentLines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const colonIndex = trimmedLine.lastIndexOf(':');
+                    if (colonIndex === -1) return;
+                    
+                    const key = trimmedLine.substring(0, colonIndex);
+                    const budget = trimmedLine.substring(colonIndex + 1);
+                    currentBudgets.set(key, budget);
+                });
+                
+                // 解析删除规则
+                const deleteKeys = new Set();
+                const deleteLines = deleteRulesText.split('\n').filter(line => line.trim());
+                
+                deleteLines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const parts = trimmedLine.split(/\t+|\s{2,}/).filter(part => part.trim());
+                    if (parts.length < 1) return;
+                    
+                    let dimensions = parts;
+                    
+                    // 使用智能识别逻辑，但删除模式下不考虑预算值
+                    if (parts.length === 4) {
+                        const lastPart = parts[3];
+                        const isNumber = !isNaN(lastPart) && lastPart.trim() !== '';
+                        const isNotThousandMultiple = isNumber && (parseFloat(lastPart) % 1000 !== 0);
+                        
+                        if (isNumber && isNotThousandMultiple) {
+                            // 按adx+first_ssp+bundle+placement模式
+                            dimensions = parts;
+                        } else if (isNumber) {
+                            // 最后一位可能是预算值，但删除模式下忽略
+                            dimensions = parts;
+                        } else {
+                            dimensions = parts;
+                        }
+                    }
+                    
+                    // 生成key
+                    let key = dimensions.join('#');
+                    while (dimensions.length < 4) {
+                        key += '#';
+                        dimensions.push('');
+                    }
+                    
+                    deleteKeys.add(key);
+                });
+                
+                // 统计信息
+                const stats = {
+                    originalCount: currentBudgets.size,
+                    deleted: 0,
+                    notFound: 0,
+                    remaining: 0,
+                    totalBudgetBefore: 0,
+                    totalBudgetAfter: 0
+                };
+                
+                // 计算删除前总预算
+                currentBudgets.forEach(budget => {
+                    stats.totalBudgetBefore += parseFloat(budget) || 0;
+                });
+                
+                // 执行删除
+                deleteKeys.forEach(key => {
+                    if (currentBudgets.has(key)) {
+                        currentBudgets.delete(key);
+                        stats.deleted++;
+                    } else {
+                        stats.notFound++;
+                    }
+                });
+                
+                stats.remaining = currentBudgets.size;
+                
+                // 计算删除后总预算
                 currentBudgets.forEach(budget => {
                     stats.totalBudgetAfter += parseFloat(budget) || 0;
                 });
@@ -1339,18 +1503,59 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                     results.push(`${key}:${budget}`);
                 });
                 
-                // 显示结果
                 document.getElementById('budgetOutput').value = results.join('\n');
                 
-                // 显示统计
-                showBudgetStats(stats);
+                // 显示删除统计
+                showDeleteStats(stats);
                 
-                const totalChanges = stats.updated + stats.newCount;
-                showBudgetMessage(`成功处理 ${totalChanges} 条配置 (更新${stats.updated}条，新增${stats.newCount}条)！`, 'success');
+                showBudgetMessage(`删除完成！成功删除 ${stats.deleted} 条配置，剩余 ${stats.remaining} 条配置`, 'success');
                 
             } catch (error) {
-                showBudgetMessage('调整失败: ' + error.message);
+                showBudgetMessage('删除失败: ' + error.message);
             }
+        }
+
+        function showDeleteStats(stats) {
+            const previewDiv = document.getElementById('budgetPreview');
+            const statsDiv = document.getElementById('budgetStats');
+            
+            const budgetChange = stats.totalBudgetAfter - stats.totalBudgetBefore;
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.originalCount}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">原配置数</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #e74c3c;">${stats.deleted}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">已删除</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #95a5a6;">${stats.notFound}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">未找到</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #27ae60;">${stats.remaining}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">剩余配置</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetBefore.toFixed(2)}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">原总预算</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetAfter.toFixed(2)}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">剩余预算</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #e74c3c;">${budgetChange.toFixed(2)}</div>
+                        <div style="color: #7f8c8d; font-size: 12px;">预算减少</div>
+                    </div>
+                </div>
+            `;
+            
+            statsDiv.innerHTML = html;
+            previewDiv.style.display = 'block';
         }
 
         function showBudgetStats(stats) {
@@ -1401,9 +1606,15 @@ topon	mintegral.com	com.shopee.ph	banner	2500
         function clearAdjustment() {
             document.getElementById('currentBudgetInput').value = '';
             document.getElementById('updateRulesInput').value = '';
+            document.getElementById('deleteRulesInput').value = '';
             document.getElementById('defaultCapInput').value = '';
             document.getElementById('budgetOutput').value = '';
             document.getElementById('budgetPreview').style.display = 'none';
+            
+            // 重置为更新模式
+            document.querySelector('input[name="operationMode"][value="update"]').checked = true;
+            document.getElementById('updateMode').style.display = 'block';
+            document.getElementById('deleteMode').style.display = 'none';
         }
 
         function copyBudgetResult() {
