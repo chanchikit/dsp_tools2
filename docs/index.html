@@ -433,7 +433,7 @@
             
             <div class="tool-body">
                 <div class="input-section">
-                    <label for="currentBudgetInput">当前预算配置:</label>
+                    <label for="currentBudgetInput">当前预算配置 (可选):</label>
                     <textarea id="currentBudgetInput" placeholder='输入当前的预算配置，每行一个，格式：
 adx#first_ssp#bundle#placement:预算值
 adx#first_ssp#bundle#:预算值
@@ -441,13 +441,19 @@ adx#first_ssp#bundle#:预算值
 例如：
 flatads#chartboost.com#com.vitastudio.mahjong#0d9d8f05-c123-42d9-a1b3-f83a6354217b:100
 flatads#chartboost.com#com.vitastudio.mahjong#:50
-topon#mintegral.com#com.shopee.ph#banner:200'></textarea>
+topon#mintegral.com#com.shopee.ph#banner:200
+
+注意：更新预算模式下此项为可选，为空时将创建全新的预算配置'></textarea>
                     
                     <label>操作模式:</label>
                     <div style="margin-bottom: 20px;">
                         <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
                             <input type="radio" name="operationMode" value="update" checked style="margin-right: 8px;">
                             更新预算
+                        </label>
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
+                            <input type="radio" name="operationMode" value="add-only" style="margin-right: 8px;">
+                            仅新增预算
                         </label>
                         <label style="display: inline-flex; align-items: center; font-weight: normal;">
                             <input type="radio" name="operationMode" value="delete" style="margin-right: 8px;">
@@ -1245,7 +1251,7 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                     const updateMode = document.getElementById('updateMode');
                     const deleteMode = document.getElementById('deleteMode');
                     
-                    if (this.value === 'update') {
+                    if (this.value === 'update' || this.value === 'add-only') {
                         updateMode.style.display = 'block';
                         deleteMode.style.display = 'none';
                     } else {
@@ -1260,19 +1266,20 @@ topon	mintegral.com	com.shopee.ph	banner	2500
             const currentBudgetText = document.getElementById('currentBudgetInput').value.trim();
             const operationMode = document.querySelector('input[name="operationMode"]:checked').value;
             
-            if (!currentBudgetText) {
-                showBudgetMessage('请输入当前预算配置');
+            // 删除模式必须有当前预算配置
+            if (operationMode === 'delete' && !currentBudgetText) {
+                showBudgetMessage('删除模式需要输入当前预算配置');
                 return;
             }
             
-            if (operationMode === 'update') {
-                performUpdateBudget(currentBudgetText);
+            if (operationMode === 'update' || operationMode === 'add-only') {
+                performUpdateBudget(currentBudgetText, operationMode);
             } else {
                 performDeleteBudget(currentBudgetText);
             }
         }
 
-        function performUpdateBudget(currentBudgetText) {
+        function performUpdateBudget(currentBudgetText, mode = 'update') {
             const updateRulesText = document.getElementById('updateRulesInput').value.trim();
             const defaultCap = document.getElementById('defaultCapInput').value.trim();
             
@@ -1361,8 +1368,11 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                     newCount: 0,
                     updated: 0,
                     unchanged: currentBudgets.size,
+                    skipped: 0,  // 新增：跳过的已存在记录数
                     totalBudgetBefore: 0,
-                    totalBudgetAfter: 0
+                    totalBudgetAfter: 0,
+                    isFromScratch: currentBudgets.size === 0,
+                    isAddOnlyMode: mode === 'add-only'
                 };
                 
                 currentBudgets.forEach(budget => {
@@ -1371,10 +1381,17 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                 
                 updateRules.forEach(rule => {
                     if (currentBudgets.has(rule.key)) {
-                        currentBudgets.set(rule.key, rule.budget);
-                        stats.updated++;
-                        stats.unchanged--;
+                        if (mode === 'add-only') {
+                            // 仅新增模式：跳过已存在的记录
+                            stats.skipped++;
+                        } else {
+                            // 更新模式：更新已存在的记录
+                            currentBudgets.set(rule.key, rule.budget);
+                            stats.updated++;
+                            stats.unchanged--;
+                        }
                     } else {
+                        // 新增记录
                         currentBudgets.set(rule.key, rule.budget);
                         stats.newCount++;
                     }
@@ -1393,7 +1410,13 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                 showBudgetStats(stats);
                 
                 const totalChanges = stats.updated + stats.newCount;
-                showBudgetMessage(`成功处理 ${totalChanges} 条配置 (更新${stats.updated}条，新增${stats.newCount}条)！`, 'success');
+                if (stats.isFromScratch) {
+                    showBudgetMessage(`成功创建 ${stats.newCount} 条新预算配置！`, 'success');
+                } else if (stats.isAddOnlyMode) {
+                    showBudgetMessage(`成功新增 ${stats.newCount} 条配置，跳过 ${stats.skipped} 条已存在配置！`, 'success');
+                } else {
+                    showBudgetMessage(`成功处理 ${totalChanges} 条配置 (更新${stats.updated}条，新增${stats.newCount}条)！`, 'success');
+                }
                 
             } catch (error) {
                 showBudgetMessage('更新失败: ' + error.message);
@@ -1566,38 +1589,91 @@ topon	mintegral.com	com.shopee.ph	banner	2500
             const changeColor = budgetChange > 0 ? '#27ae60' : budgetChange < 0 ? '#e74c3c' : '#7f8c8d';
             const changeSymbol = budgetChange > 0 ? '+' : '';
             
-            let html = `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.originalCount + stats.newCount}</div>
-                        <div style="color: #7f8c8d; font-size: 12px;">总配置数</div>
+            let html = '';
+            
+            if (stats.isFromScratch) {
+                // 从零创建的统计显示
+                html = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #3498db;">${stats.newCount}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">新建配置</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetAfter.toFixed(2)}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">总预算设置</div>
+                        </div>
                     </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 20px; font-weight: bold; color: #27ae60;">${stats.updated}</div>
-                        <div style="color: #7f8c8d; font-size: 12px;">已更新</div>
+                `;
+            } else if (stats.isAddOnlyMode) {
+                // 仅新增模式的统计显示
+                html = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.originalCount + stats.newCount}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">总配置数</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #3498db;">${stats.newCount}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">新增</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #f39c12;">${stats.skipped}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">跳过</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #95a5a6;">${stats.unchanged}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">未变更</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetBefore.toFixed(2)}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">原总预算</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetAfter.toFixed(2)}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">新总预算</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 16px; font-weight: bold; color: ${changeColor};">${changeSymbol}${budgetChange.toFixed(2)}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">预算变化</div>
+                        </div>
                     </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 20px; font-weight: bold; color: #3498db;">${stats.newCount}</div>
-                        <div style="color: #7f8c8d; font-size: 12px;">新增</div>
+                `;
+            } else {
+                // 更新现有配置的统计显示
+                html = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #2980b9;">${stats.originalCount + stats.newCount}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">总配置数</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #27ae60;">${stats.updated}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">已更新</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #3498db;">${stats.newCount}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">新增</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #95a5a6;">${stats.unchanged}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">未变更</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetBefore.toFixed(2)}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">原总预算</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetAfter.toFixed(2)}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">新总预算</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 16px; font-weight: bold; color: ${changeColor};">${changeSymbol}${budgetChange.toFixed(2)}</div>
+                            <div style="color: #7f8c8d; font-size: 12px;">预算变化</div>
+                        </div>
                     </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 20px; font-weight: bold; color: #95a5a6;">${stats.unchanged}</div>
-                        <div style="color: #7f8c8d; font-size: 12px;">未变更</div>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetBefore.toFixed(2)}</div>
-                        <div style="color: #7f8c8d; font-size: 12px;">原总预算</div>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 16px; font-weight: bold; color: #f39c12;">${stats.totalBudgetAfter.toFixed(2)}</div>
-                        <div style="color: #7f8c8d; font-size: 12px;">新总预算</div>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="font-size: 16px; font-weight: bold; color: ${changeColor};">${changeSymbol}${budgetChange.toFixed(2)}</div>
-                        <div style="color: #7f8c8d; font-size: 12px;">预算变化</div>
-                    </div>
-                </div>
-            `;
+                `;
+            }
             
             statsDiv.innerHTML = html;
             previewDiv.style.display = 'block';
