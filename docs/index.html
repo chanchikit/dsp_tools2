@@ -234,6 +234,7 @@
                 <button class="nav-item" onclick="switchTool('url-encoder', this)">🔗 URL编解码</button>
                 <button class="nav-item" onclick="switchTool('bid-parser', this)">🎯 Bid识别</button>
                 <button class="nav-item" onclick="switchTool('budget-generator', this)">💰 预算生成</button>
+                <button class="nav-item" onclick="switchTool('sql-generator', this)">🔧 快速SQL生成</button>
                 <button class="nav-item" disabled>📋 JSON格式化</button>
                 <button class="nav-item" disabled>🔍 正则测试器</button>
                 <button class="nav-item" disabled>🎨 颜色工具</button>
@@ -247,7 +248,7 @@
             <div class="welcome">
                 <h2>欢迎使用开发者工具集</h2>
                 <p>请从顶部菜单栏选择需要使用的工具</p>
-                <p>✅ 已完成：ADM转换器、时间戳转换、URL编解码、Bid识别、预算生成</p>
+                <p>✅ 已完成：ADM转换器、时间戳转换、URL编解码、Bid识别、预算生成、快速SQL生成</p>
                 <p>🚧 开发中：JSON格式化、正则测试器、颜色工具等</p>
             </div>
         </div>
@@ -561,6 +562,56 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                             <h4 style="color: #2c3e50; margin-bottom: 10px;">📈 对比统计</h4>
                             <div id="comparisonStats"></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速SQL生成工具 -->
+        <div id="sql-generator" class="tool-content">
+            <div class="tool-header">
+                <h2>🔧 快速SQL生成工具</h2>
+                <p>根据不同类型快速生成SQL语句</p>
+            </div>
+            
+            <div class="tool-body">
+                <div class="input-section">
+                    <label>SQL类型:</label>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
+                            <input type="radio" name="sqlType" value="block-placement" checked style="margin-right: 8px;">
+                            细粒度掐停SQL
+                        </label>
+                    </div>
+                    
+                    <div id="blockPlacementMode">
+                        <label for="blockPlacementInput">输入数据 (可以从Excel直接复制):</label>
+                        <textarea id="blockPlacementInput" placeholder='输入数据，每行一个，格式：
+ad_plan_id	adx	first_ssp	bundle	placement
+
+例如：
+1	adx1	ssp1	bundle1	placement1
+2	adx2	ssp2	bundle2	placement2
+3	adx3	ssp3	bundle3	placement3
+
+支持从Excel直接复制粘贴'></textarea>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="generateSQL()">生成SQL</button>
+                        <button class="btn-secondary" onclick="clearSQLGenerator()">清空</button>
+                    </div>
+                    
+                    <div id="sqlMessage"></div>
+                </div>
+                
+                <div class="output-section">
+                    <label>生成的SQL:</label>
+                    <textarea id="sqlOutput" readonly placeholder="生成的SQL语句将显示在这里..."></textarea>
+                    
+                    <div class="button-group">
+                        <button class="btn-success" onclick="copySQLResult()">复制SQL</button>
+                        <button class="btn-secondary" onclick="downloadSQLFile()">下载文件</button>
                     </div>
                 </div>
             </div>
@@ -2036,6 +2087,108 @@ topon	mintegral.com	com.shopee.ph	banner	2500
             } catch (error) {
                 showComparisonMessage('导出失败: ' + error.message);
             }
+        }
+
+        // 快速SQL生成工具相关函数
+        function showSQLMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('sqlMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function generateSQL() {
+            const sqlType = document.querySelector('input[name="sqlType"]:checked').value;
+            
+            if (sqlType === 'block-placement') {
+                generateBlockPlacementSQL();
+            }
+        }
+
+        function generateBlockPlacementSQL() {
+            const inputText = document.getElementById('blockPlacementInput').value.trim();
+            
+            if (!inputText) {
+                showSQLMessage('请输入数据');
+                return;
+            }
+            
+            try {
+                const lines = inputText.split('\n').filter(line => line.trim());
+                const values = [];
+                
+                lines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return;
+                    
+                    const parts = trimmedLine.split(/\t+|\s{2,}/).filter(part => part.trim());
+                    if (parts.length < 5) {
+                        showSQLMessage(`数据格式错误，需要5个字段：ad_plan_id, adx, first_ssp, bundle, placement`);
+                        return;
+                    }
+                    
+                    const [ad_plan_id, adx, first_ssp, bundle, placement] = parts;
+                    values.push(`(${ad_plan_id}, '${adx}', '${first_ssp}', '${bundle}', '${placement}', 'block_forever', NOW())`);
+                });
+                
+                if (values.length === 0) {
+                    showSQLMessage('没有有效的数据行');
+                    return;
+                }
+                
+                const sql = `INSERT INTO ad_plan_block_placement
+(ad_plan_id, adx, first_ssp, bundle, placement, block_placement_type, date_created)
+VALUES
+${values.join(',\n')};`;
+                
+                document.getElementById('sqlOutput').value = sql;
+                showSQLMessage(`成功生成 ${values.length} 条记录的SQL语句！`, 'success');
+                
+            } catch (error) {
+                showSQLMessage('生成失败: ' + error.message);
+            }
+        }
+
+        function clearSQLGenerator() {
+            document.getElementById('blockPlacementInput').value = '';
+            document.getElementById('sqlOutput').value = '';
+        }
+
+        function copySQLResult() {
+            const result = document.getElementById('sqlOutput').value;
+            
+            if (!result) {
+                showSQLMessage('请先生成SQL');
+                return;
+            }
+            
+            navigator.clipboard.writeText(result).then(() => {
+                showSQLMessage('SQL已复制到剪贴板！', 'success');
+            }).catch(() => {
+                showSQLMessage('复制失败，请手动选择复制');
+            });
+        }
+
+        function downloadSQLFile() {
+            const result = document.getElementById('sqlOutput').value;
+            
+            if (!result) {
+                showSQLMessage('请先生成SQL');
+                return;
+            }
+            
+            const blob = new Blob([result], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sql_${Date.now()}.sql`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showSQLMessage('SQL文件下载成功！', 'success');
         }
     </script>
 </body>
