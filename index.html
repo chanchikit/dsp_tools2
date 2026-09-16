@@ -234,6 +234,7 @@
                 <button class="nav-item" onclick="switchTool('url-encoder', this)">🔗 URL编解码</button>
                 <button class="nav-item" onclick="switchTool('bid-parser', this)">🎯 Bid识别</button>
                 <button class="nav-item" onclick="switchTool('budget-generator', this)">💰 预算生成</button>
+                <button class="nav-item" onclick="switchTool('bid-coefficient', this)">⚖️ 出价系数配置</button>
                 <button class="nav-item" onclick="switchTool('sql-generator', this)">🔧 快速SQL生成</button>
                 <button class="nav-item" disabled>📋 JSON格式化</button>
                 <button class="nav-item" disabled>🔍 正则测试器</button>
@@ -571,6 +572,111 @@ topon	mintegral.com	com.shopee.ph	banner	2500
                             <h4 style="color: #2c3e50; margin-bottom: 10px;">📈 对比统计</h4>
                             <div id="comparisonStats"></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 细粒度出价系数配置工具 -->
+        <div id="bid-coefficient" class="tool-content">
+            <div class="tool-header">
+                <h2>⚖️ 细粒度出价系数配置工具</h2>
+                <p>按 adx#first_ssp#bundle:base_bid:max_bid 格式生成/调整出价系数，支持排重与重复项检测</p>
+            </div>
+
+            <div class="tool-body">
+                <div class="input-section">
+                    <label for="bcCurrentInput">当前出价系数配置 (可选):</label>
+                    <textarea id="bcCurrentInput" placeholder='输入当前的出价系数配置，每行一个，格式：
+adx#first_ssp#bundle:base_bid:max_bid
+adx#first_ssp:base_bid:max_bid   (bundle 不填)
+
+例如：
+flatads#chartboost.com#com.vitastudio.mahjong:1.5:3
+topon#mintegral.com#com.shopee.ph:2:5
+flatads#pubmatic.com:1:2
+
+说明：更新/仅新增模式下此项为可选，为空时将直接生成全新配置'></textarea>
+
+                    <label>操作模式:</label>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
+                            <input type="radio" name="bcOperationMode" value="update" checked style="margin-right: 8px;">
+                            更新配置
+                        </label>
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
+                            <input type="radio" name="bcOperationMode" value="add-only" style="margin-right: 8px;">
+                            仅新增配置
+                        </label>
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
+                            <input type="radio" name="bcOperationMode" value="delete" style="margin-right: 8px;">
+                            删除配置
+                        </label>
+                        <label style="display: inline-flex; align-items: center; font-weight: normal;">
+                            <input type="radio" name="bcOperationMode" value="dedup" style="margin-right: 8px;">
+                            仅排重/查重
+                        </label>
+                    </div>
+
+                    <label>调整字段:</label>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; font-weight: normal;">
+                            <input type="radio" name="bcField" value="base_bid" checked style="margin-right: 8px;">
+                            调整 base_bid (0~20)
+                        </label>
+                        <label style="display: inline-flex; align-items: center; font-weight: normal;">
+                            <input type="radio" name="bcField" value="max_bid" style="margin-right: 8px;">
+                            调整 max_bid (0~50)
+                        </label>
+                    </div>
+
+                    <div id="bcRulesWrap">
+                        <label for="bcRulesInput">调整目标 (从 Excel 直接复制，3~4 列):</label>
+                        <textarea id="bcRulesInput" placeholder='从 Excel 框选粘贴，列顺序固定，最后一列是数值：
+· 4 列：adx    first_ssp    bundle    值
+· 3 列：adx    first_ssp    值         (没有 bundle)
+
+例如（当前调整字段为 base_bid 时，最后一列即 base_bid）：
+flatads    chartboost.com    com.vitastudio.mahjong    1.5
+topon      mintegral.com     com.shopee.ph             2
+flatads    pubmatic.com      1
+
+也兼容冒号格式：adx#first_ssp#bundle:值 / adx#first_ssp:值
+
+约束：base_bid 范围 0~20，max_bid 范围 0~50，支持最多 4 位小数；
+删除/查重模式可只填维度(3 或 4 列去掉数值列)。'></textarea>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="adjustBidCoefficient()">生成配置</button>
+                        <button class="btn-secondary" onclick="clearBidCoefficient()">清空</button>
+                    </div>
+
+                    <div id="bcMessage"></div>
+                </div>
+
+                <div class="output-section">
+                    <label>配置结果:</label>
+                    <textarea id="bcOutput" readonly placeholder="生成后的出价系数配置将显示在这里..."></textarea>
+
+                    <div class="button-group">
+                        <button class="btn-success" onclick="copyBidCoefficientResult()">复制结果</button>
+                        <button class="btn-secondary" onclick="downloadBidCoefficientFile()">下载文件</button>
+                    </div>
+
+                    <div id="bcStatsBox" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">📈 处理统计</h4>
+                        <div id="bcStats"></div>
+                    </div>
+
+                    <div id="bcDupBox" style="background: #fff8f0; border: 1px solid #f0c98a; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
+                        <h4 style="color: #b26a00; margin-bottom: 10px;">⚠️ 重复项 (按 adx#first_ssp#bundle 判定)</h4>
+                        <div id="bcDupContent"></div>
+                    </div>
+
+                    <div id="bcErrorBox" style="background: #fdf0f0; border: 1px solid #e0a0a0; border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
+                        <h4 style="color: #c0392b; margin-bottom: 10px;">🚫 无效行</h4>
+                        <div id="bcErrorContent"></div>
                     </div>
                 </div>
             </div>
@@ -2059,6 +2165,347 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
             URL.revokeObjectURL(url);
             
             showBudgetMessage('预算配置文件下载成功！', 'success');
+        }
+
+        // ==================== 细粒度出价系数配置相关函数 ====================
+        function showBidCoefficientMessage(text, type = 'error') {
+            const messageDiv = document.getElementById('bcMessage');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 4000);
+        }
+
+        // 校验数值范围：field 为 'base_bid'(0~20) 或 'max_bid'(0~50)，最多 4 位小数
+        function bcValidateValue(val, field) {
+            if (!/^\d+(\.\d{1,4})?$/.test(val)) return `数值非法(需数字，最多4位小数): `;
+            const v = parseFloat(val);
+            if (field === 'base_bid' && (v < 0 || v > 20)) return `base_bid 需在 0~20: `;
+            if (field === 'max_bid' && (v < 0 || v > 50)) return `max_bid 需在 0~50: `;
+            return null;
+        }
+
+        // 解析一行：固定列序，最后一列是数值(needValue 时)，前面维度拼 #。支持 3~4 列或冒号格式
+        // 返回 { key, value } / { key }(删除查重) / { error }
+        function parseBidCoefficientLine(rawLine, needValue, field) {
+            const line = rawLine.trim();
+            if (!line) return null;
+
+            let dims = [];
+            let value = '';
+
+            const idx = line.indexOf(':');
+            const hasColon = idx !== -1;
+            const hasTab = /\t|\s{2,}/.test(line);
+
+            if (hasColon && !hasTab) {
+                // 冒号格式: dim:value / dim
+                const dimPart = line.substring(0, idx);
+                value = line.substring(idx + 1).trim();
+                dims = dimPart.split('#').map(s => s.trim());
+            } else {
+                // 多列格式：制表符/多空格分列
+                const parts = line.split(/\t+|\s{2,}/).map(s => s.trim());
+                // 维度列本身可能已用 # 连接，先展开再统计
+                let cols = [];
+                parts.forEach(p => p.split('#').forEach(seg => cols.push(seg.trim())));
+                // 去掉尾部空列、中间空列
+                while (cols.length > 0 && cols[cols.length - 1] === '') cols.pop();
+                cols = cols.filter((s, i) => !(s === '' && i > 0));
+
+                if (needValue) {
+                    // 最后一列是数值，前面是维度；总列数 3~4（维度 2~3 + 值 1）
+                    if (cols.length < 3 || cols.length > 4) {
+                        return { error: `需 3~4 列(adx first_ssp [bundle] 值): ${rawLine}` };
+                    }
+                    value = cols[cols.length - 1];
+                    dims = cols.slice(0, -1);
+                } else {
+                    // 删除/查重：只有维度，2~3 列
+                    if (cols.length < 2 || cols.length > 3) {
+                        return { error: `需 2~3 列维度(adx first_ssp [bundle]): ${rawLine}` };
+                    }
+                    dims = cols;
+                }
+            }
+
+            // 规范化维度 key
+            while (dims.length > 0 && dims[dims.length - 1] === '') dims.pop();
+            dims = dims.filter((s, i) => !(s === '' && i > 0));
+            if (dims.length < 2) {
+                return { error: `维度至少需要 adx#first_ssp: ${rawLine}` };
+            }
+            const key = dims.join('#');
+
+            if (!needValue) {
+                return { key };
+            }
+
+            if (value === '') {
+                return { error: `缺少${field}数值: ${rawLine}` };
+            }
+            const verr = bcValidateValue(value, field);
+            if (verr) return { error: verr + rawLine };
+
+            return { key, value };
+        }
+
+        // 将一条记录格式化为输出行：key:base:max（缺省项留空但保留冒号占位）
+        function formatBidCoefficientLine(rec) {
+            return `${rec.key}:${rec.base_bid || ''}:${rec.max_bid || ''}`;
+        }
+
+        // 解析「当前配置」一行（格式 key:base:max，base/max 可空），返回 { key, base_bid, max_bid } / { error }
+        function parseCurrentBidLine(rawLine) {
+            const line = rawLine.trim();
+            if (!line) return null;
+            const idx = line.indexOf(':');
+            let dimPart, valParts;
+            if (idx === -1) {
+                dimPart = line;
+                valParts = [];
+            } else {
+                dimPart = line.substring(0, idx);
+                valParts = line.substring(idx + 1).split(':');
+            }
+            let dims = dimPart.split('#').map(s => s.trim());
+            while (dims.length > 0 && dims[dims.length - 1] === '') dims.pop();
+            dims = dims.filter((s, i) => !(s === '' && i > 0));
+            if (dims.length < 2) return { error: `维度至少需要 adx#first_ssp: ${rawLine}` };
+            return {
+                key: dims.join('#'),
+                base_bid: valParts.length >= 1 ? valParts[0].trim() : '',
+                max_bid: valParts.length >= 2 ? valParts[1].trim() : ''
+            };
+        }
+
+        function adjustBidCoefficient() {
+            const mode = document.querySelector('input[name="bcOperationMode"]:checked').value;
+            const field = document.querySelector('input[name="bcField"]:checked').value; // base_bid / max_bid
+            const otherField = field === 'base_bid' ? 'max_bid' : 'base_bid';
+            const currentText = document.getElementById('bcCurrentInput').value.trim();
+            const rulesText = document.getElementById('bcRulesInput').value.trim();
+
+            document.getElementById('bcDupBox').style.display = 'none';
+            document.getElementById('bcErrorBox').style.display = 'none';
+            document.getElementById('bcStatsBox').style.display = 'none';
+
+            const needValue = (mode === 'update' || mode === 'add-only');
+
+            if (!rulesText && mode !== 'dedup') {
+                showBidCoefficientMessage('请输入调整目标');
+                return;
+            }
+            if (mode === 'dedup' && !currentText && !rulesText) {
+                showBidCoefficientMessage('查重模式请至少输入当前配置或调整目标');
+                return;
+            }
+            if (mode === 'delete' && !currentText) {
+                showBidCoefficientMessage('删除模式需要输入当前出价系数配置');
+                return;
+            }
+
+            const errors = [];
+
+            // 解析当前配置为 Map(key -> {key, base_bid, max_bid})
+            const currentMap = new Map();
+            if (currentText) {
+                currentText.split('\n').forEach(line => {
+                    if (!line.trim()) return;
+                    const rec = parseCurrentBidLine(line);
+                    if (rec && !rec.error) currentMap.set(rec.key, rec);
+                    else if (rec && rec.error) errors.push('当前配置 - ' + rec.error);
+                });
+            }
+
+            // dedup 模式：合并 current + rules 只做排重与查重（按 key）
+            if (mode === 'dedup') {
+                const seen = new Map();
+                const dupKeys = new Map(); // key -> count
+                // 当前配置
+                if (currentText) {
+                    currentText.split('\n').forEach(line => {
+                        if (!line.trim()) return;
+                        const rec = parseCurrentBidLine(line);
+                        if (!rec) return;
+                        if (rec.error) { errors.push('当前配置 - ' + rec.error); return; }
+                        if (seen.has(rec.key)) dupKeys.set(rec.key, (dupKeys.get(rec.key) || 1) + 1);
+                        else seen.set(rec.key, rec);
+                    });
+                }
+                // 调整目标（只取 key）
+                if (rulesText) {
+                    rulesText.split('\n').forEach(line => {
+                        if (!line.trim()) return;
+                        const rec = parseBidCoefficientLine(line, false, field);
+                        if (!rec) return;
+                        if (rec.error) { errors.push('调整目标 - ' + rec.error); return; }
+                        if (seen.has(rec.key)) dupKeys.set(rec.key, (dupKeys.get(rec.key) || 1) + 1);
+                        else seen.set(rec.key, { key: rec.key, base_bid: '', max_bid: '' });
+                    });
+                }
+
+                document.getElementById('bcOutput').value = Array.from(seen.values()).map(formatBidCoefficientLine).join('\n');
+                renderBidCoefficientStats({ mode, outputTotal: seen.size, dupCount: dupKeys.size });
+                renderBidCoefficientDup(dupKeys);
+                renderBidCoefficientErrors(errors);
+                showBidCoefficientMessage(dupKeys.size > 0 ? `发现 ${dupKeys.size} 个重复 key，已保留首次出现` : '未发现重复项', dupKeys.size > 0 ? 'error' : 'success');
+                return;
+            }
+
+            // 解析调整目标（单值 + 当前字段）
+            const ruleRecs = [];
+            const ruleDupKeys = new Map();
+            const ruleSeen = new Set();
+            if (rulesText) {
+                rulesText.split('\n').forEach(line => {
+                    if (!line.trim()) return;
+                    const rec = parseBidCoefficientLine(line, needValue, field);
+                    if (!rec) return;
+                    if (rec.error) { errors.push('调整目标 - ' + rec.error); return; }
+                    if (ruleSeen.has(rec.key)) {
+                        ruleDupKeys.set(rec.key, (ruleDupKeys.get(rec.key) || 1) + 1);
+                    } else {
+                        ruleSeen.add(rec.key);
+                    }
+                    ruleRecs.push(rec);
+                });
+            }
+
+            const stats = { mode, field, added: 0, updated: 0, deleted: 0, skipped: 0 };
+
+            if (mode === 'update' || mode === 'add-only') {
+                // 以 current 为基础，把规则的 value 写入选中字段，另一字段沿用旧值
+                const result = new Map(currentMap);
+                ruleRecs.forEach(rec => {
+                    const exists = result.has(rec.key);
+                    if (exists && mode === 'add-only') {
+                        stats.skipped++;
+                        return;
+                    }
+                    if (exists) {
+                        const old = result.get(rec.key);
+                        const merged = { key: rec.key, base_bid: old.base_bid, max_bid: old.max_bid };
+                        merged[field] = rec.value;
+                        result.set(rec.key, merged);
+                        stats.updated++;
+                    } else {
+                        const fresh = { key: rec.key, base_bid: '', max_bid: '' };
+                        fresh[field] = rec.value;
+                        result.set(rec.key, fresh);
+                        stats.added++;
+                    }
+                });
+                document.getElementById('bcOutput').value = Array.from(result.values()).map(formatBidCoefficientLine).join('\n');
+                stats.outputTotal = result.size;
+            } else if (mode === 'delete') {
+                const result = new Map(currentMap);
+                ruleRecs.forEach(rec => {
+                    if (result.has(rec.key)) {
+                        result.delete(rec.key);
+                        stats.deleted++;
+                    } else {
+                        stats.skipped++;
+                    }
+                });
+                document.getElementById('bcOutput').value = Array.from(result.values()).map(formatBidCoefficientLine).join('\n');
+                stats.outputTotal = result.size;
+            }
+
+            stats.dupCount = ruleDupKeys.size;
+            renderBidCoefficientStats(stats);
+            renderBidCoefficientDup(ruleDupKeys);
+            renderBidCoefficientErrors(errors);
+
+            if (ruleDupKeys.size > 0) {
+                showBidCoefficientMessage(`处理完成，但调整目标中有 ${ruleDupKeys.size} 个重复 key（已按最后一条为准），请检查`, 'error');
+            } else if (errors.length > 0) {
+                showBidCoefficientMessage(`处理完成，但有 ${errors.length} 行无效被跳过`, 'error');
+            } else {
+                showBidCoefficientMessage('生成成功！', 'success');
+            }
+        }
+
+        function renderBidCoefficientStats(stats) {
+            const box = document.getElementById('bcStatsBox');
+            const el = document.getElementById('bcStats');
+            let html = '';
+            if (stats.mode === 'update' || stats.mode === 'add-only') {
+                html = `<p>调整字段：<b>${stats.field}</b>　新增：<b>${stats.added}</b> 条　更新：<b>${stats.updated}</b> 条　跳过：<b>${stats.skipped}</b> 条　最终总数：<b>${stats.outputTotal}</b> 条</p>`;
+            } else if (stats.mode === 'delete') {
+                html = `<p>删除：<b>${stats.deleted}</b> 条　未命中跳过：<b>${stats.skipped}</b> 条　剩余总数：<b>${stats.outputTotal}</b> 条</p>`;
+            } else if (stats.mode === 'dedup') {
+                html = `<p>去重后总数：<b>${stats.outputTotal}</b> 条　重复 key：<b>${stats.dupCount}</b> 个</p>`;
+            }
+            el.innerHTML = html;
+            box.style.display = 'block';
+        }
+
+        function renderBidCoefficientDup(dupMap) {
+            const box = document.getElementById('bcDupBox');
+            const el = document.getElementById('bcDupContent');
+            if (!dupMap || dupMap.size === 0) {
+                box.style.display = 'none';
+                return;
+            }
+            const rows = Array.from(dupMap.entries())
+                .map(([k, cnt]) => `<div style="font-family: monospace; font-size: 13px;">${k} — 出现 ${cnt} 次</div>`)
+                .join('');
+            el.innerHTML = rows;
+            box.style.display = 'block';
+        }
+
+        function renderBidCoefficientErrors(errors) {
+            const box = document.getElementById('bcErrorBox');
+            const el = document.getElementById('bcErrorContent');
+            if (!errors || errors.length === 0) {
+                box.style.display = 'none';
+                return;
+            }
+            el.innerHTML = errors.map(e => `<div style="font-family: monospace; font-size: 13px;">${e}</div>`).join('');
+            box.style.display = 'block';
+        }
+
+        function clearBidCoefficient() {
+            document.getElementById('bcCurrentInput').value = '';
+            document.getElementById('bcRulesInput').value = '';
+            document.getElementById('bcOutput').value = '';
+            document.getElementById('bcStatsBox').style.display = 'none';
+            document.getElementById('bcDupBox').style.display = 'none';
+            document.getElementById('bcErrorBox').style.display = 'none';
+            document.querySelector('input[name="bcOperationMode"][value="update"]').checked = true;
+            document.querySelector('input[name="bcField"][value="base_bid"]').checked = true;
+        }
+
+        function copyBidCoefficientResult() {
+            const result = document.getElementById('bcOutput').value;
+            if (!result) {
+                showBidCoefficientMessage('请先生成配置');
+                return;
+            }
+            navigator.clipboard.writeText(result).then(() => {
+                showBidCoefficientMessage('配置结果已复制到剪贴板！', 'success');
+            }).catch(() => {
+                showBidCoefficientMessage('复制失败，请手动选择复制');
+            });
+        }
+
+        function downloadBidCoefficientFile() {
+            const result = document.getElementById('bcOutput').value;
+            if (!result) {
+                showBidCoefficientMessage('请先生成配置');
+                return;
+            }
+            const blob = new Blob([result], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bid_coefficient_${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showBidCoefficientMessage('出价系数配置文件下载成功！', 'success');
         }
 
         // 预算与impression对比相关函数
