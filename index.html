@@ -630,6 +630,15 @@ flatads#pubmatic.com:1:2
                         </label>
                     </div>
 
+                    <label for="bcTargetValue">统一目标值 (可选):</label>
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" id="bcTargetValue" placeholder="填写后：调整目标只填维度，所有行统一用此值；留空则用每行末列的值"
+                               style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
+                        <div style="color: #888; font-size: 12px; margin-top: 6px;">
+                            填了这里，下面「调整目标」每行只需填维度（2~3 列或 adx#first_ssp#bundle）；留空则沿用旧逻辑（每行最后一列是数值）。
+                        </div>
+                    </div>
+
                     <div id="bcRulesWrap">
                         <label for="bcRulesInput">调整目标 (从 Excel 直接复制，3~4 列):</label>
                         <textarea id="bcRulesInput" placeholder='从 Excel 框选粘贴，列顺序固定，最后一列是数值：
@@ -2300,12 +2309,24 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
             const otherField = field === 'base_bid' ? 'max_bid' : 'base_bid';
             const currentText = document.getElementById('bcCurrentInput').value.trim();
             const rulesText = document.getElementById('bcRulesInput').value.trim();
+            const unifiedValue = (document.getElementById('bcTargetValue').value || '').trim();
 
             document.getElementById('bcDupBox').style.display = 'none';
             document.getElementById('bcErrorBox').style.display = 'none';
             document.getElementById('bcStatsBox').style.display = 'none';
 
-            const needValue = (mode === 'update' || mode === 'add-only');
+            // 是否使用统一目标值：仅在 update / add-only 且填了统一值时生效
+            const useUnified = unifiedValue !== '' && (mode === 'update' || mode === 'add-only');
+            if (useUnified) {
+                const verr = bcValidateValue(unifiedValue, field);
+                if (verr) {
+                    showBidCoefficientMessage('统一目标值' + verr.replace(/: $/, ''));
+                    return;
+                }
+            }
+
+            // 用了统一目标值时，调整目标每行只填维度，无需末列数值
+            const needValue = (mode === 'update' || mode === 'add-only') && !useUnified;
 
             if (!rulesText && mode !== 'dedup') {
                 showBidCoefficientMessage('请输入调整目标');
@@ -2375,9 +2396,11 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
             if (rulesText) {
                 rulesText.split('\n').forEach(line => {
                     if (!line.trim()) return;
+                    // useUnified 时按纯维度解析，再统一附上目标值
                     const rec = parseBidCoefficientLine(line, needValue, field);
                     if (!rec) return;
                     if (rec.error) { errors.push('调整目标 - ' + rec.error); return; }
+                    if (useUnified) rec.value = unifiedValue;
                     if (ruleSeen.has(rec.key)) {
                         ruleDupKeys.set(rec.key, (ruleDupKeys.get(rec.key) || 1) + 1);
                     } else {
@@ -2484,6 +2507,7 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
         function clearBidCoefficient() {
             document.getElementById('bcCurrentInput').value = '';
             document.getElementById('bcRulesInput').value = '';
+            document.getElementById('bcTargetValue').value = '';
             document.getElementById('bcOutput').value = '';
             document.getElementById('bcStatsBox').style.display = 'none';
             document.getElementById('bcDupBox').style.display = 'none';
