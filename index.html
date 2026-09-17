@@ -2176,6 +2176,24 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
             }, 4000);
         }
 
+        // 规范化出价系数 key：key 结构恒为三段 adx#first_ssp#bundle
+        // bundle 段允许为空，但必须保留占位（即末尾的 #）。
+        // 入参 dims 为按 # 切分后的维度数组，返回 { key } 或 { error }
+        function bcNormalizeKey(dims, rawLine) {
+            let d = dims.map(s => s.trim());
+            // 去掉超过 bundle 之后多余的段（最多 3 段）
+            if (d.length > 3) d = d.slice(0, 3);
+            // 前两段（adx、first_ssp）必须存在且非空
+            if (d.length < 2 || d[0] === '' || d[1] === '') {
+                return { error: `维度至少需要 adx#first_ssp: ${rawLine}` };
+            }
+            // 始终补齐到三段：缺失的 bundle 记为空字符串
+            const adx = d[0];
+            const firstSsp = d[1];
+            const bundle = d.length >= 3 ? d[2] : '';
+            return { key: `${adx}#${firstSsp}#${bundle}` };
+        }
+
         // 校验数值范围：field 为 'base_bid'(0~20) 或 'max_bid'(0~50)，最多 4 位小数
         function bcValidateValue(val, field) {
             if (!/^\d+(\.\d{1,4})?$/.test(val)) return `数值非法(需数字，最多4位小数): `;
@@ -2209,7 +2227,7 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
                 // 维度列本身可能已用 # 连接，先展开再统计
                 let cols = [];
                 parts.forEach(p => p.split('#').forEach(seg => cols.push(seg.trim())));
-                // 去掉尾部空列、中间空列
+                // 去掉尾部空列、中间空列（多列/Excel 场景下，空 bundle 通常表现为缺列而非空段）
                 while (cols.length > 0 && cols[cols.length - 1] === '') cols.pop();
                 cols = cols.filter((s, i) => !(s === '' && i > 0));
 
@@ -2229,13 +2247,10 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
                 }
             }
 
-            // 规范化维度 key
-            while (dims.length > 0 && dims[dims.length - 1] === '') dims.pop();
-            dims = dims.filter((s, i) => !(s === '' && i > 0));
-            if (dims.length < 2) {
-                return { error: `维度至少需要 adx#first_ssp: ${rawLine}` };
-            }
-            const key = dims.join('#');
+            // 规范化维度 key（恒为三段 adx#first_ssp#bundle，bundle 空则保留占位 #）
+            const norm = bcNormalizeKey(dims, rawLine);
+            if (norm.error) return { error: norm.error };
+            const key = norm.key;
 
             if (!needValue) {
                 return { key };
@@ -2268,12 +2283,12 @@ ad_plan_id	adx	first_ssp	bundle	tagid	optimal_adm_template_id	adm
                 dimPart = line.substring(0, idx);
                 valParts = line.substring(idx + 1).split(':');
             }
-            let dims = dimPart.split('#').map(s => s.trim());
-            while (dims.length > 0 && dims[dims.length - 1] === '') dims.pop();
-            dims = dims.filter((s, i) => !(s === '' && i > 0));
-            if (dims.length < 2) return { error: `维度至少需要 adx#first_ssp: ${rawLine}` };
+            // 当前配置的维度部分直接按 # 切分，保留空 bundle 段（不删尾部空段）
+            const dims = dimPart.split('#');
+            const norm = bcNormalizeKey(dims, rawLine);
+            if (norm.error) return { error: norm.error };
             return {
-                key: dims.join('#'),
+                key: norm.key,
                 base_bid: valParts.length >= 1 ? valParts[0].trim() : '',
                 max_bid: valParts.length >= 2 ? valParts[1].trim() : ''
             };
